@@ -1,0 +1,81 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "AI智能销售助手"
+			}
+		},
+		{
+			"path": "pages/product/detail",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "产品详情"
+			}
+		},
+		{
+			"path": "pages/scheme/scheme",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "生成方案"
+			}
+		},
+		{
+			"path": "pages/quotation/quotation",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "报价单"
+			}
+		},
+		{
+			"path": "pages/ppt/ppt",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "PPT预览"
+			}
+		},
+		{
+			"path": "pages/contract/contract",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "产品采购合同"
+			}
+		}
+	],
+	"easycom": {
+      "autoscan": true,
+      "custom": {
+        "^u-(.*)": "@/uni_modules/uview-plus/components/u-$1/u-$1.vue",
+        "^u--(.*)": "@/uni_modules/uview-plus/components/u--$1/u--$1.vue",
+		"^up-(.*)": "@/uni_modules/uview-plus/components/u-$1/u-$1.vue"
+      }
+    },
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#7A7E83",
+		"selectedColor": "#5DADE2",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"iconPath": "static/home.png",
+				"selectedIconPath": "static/home.png",
+				"text": "首页"
+			}
+		]
+	},
+	"uniIdRouter": {}
+}

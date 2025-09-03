@@ -1,0 +1,156 @@
+<template>
+	<view class="contract-page">
+		<view class="navbar">
+			<view class="nav-left" @click="goBack">
+				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
+			</view>
+			<view class="nav-title">产品采购合同</view>
+			<view class="nav-right"></view>
+		</view>
+
+		<scroll-view scroll-y class="content">
+			<view class="wrap">
+				<view class="paper">
+					<!-- <view class="header">
+						<view class="title">产品采购合同</view>
+					</view> -->
+					<view v-if="loading" class="loading">加载中...</view>
+					<view v-else>
+						<!-- 合同编号与日期 -->
+						<view class="meta">
+							<text>合同编号：{{ contract.contractNo || '-' }}</text>
+							<text style="margin-left: 24rpx;">签署日期：{{ contract.signDate || '' }}</text>
+						</view>
+						<!-- 甲乙方表格 -->
+						<view class="party-table">
+							<view class="party-col">
+								<view class="party-title">甲方（采购方）</view>
+								<view>公司名称：{{ contract.partyA?.company || '' }}</view>
+								<view>法定代表人：{{ contract.partyA?.legal || '' }}</view>
+								<view>地址：{{ contract.partyA?.address || '' }}</view>
+								<view>联系电话：{{ contract.partyA?.phone || '' }}</view>
+							</view>
+							<view class="party-col">
+								<view class="party-title">乙方（供应方）</view>
+								<view>公司名称：{{ contract.partyB?.company || '' }}</view>
+								<view>法定代表人：{{ contract.partyB?.legal || '' }}</view>
+								<view>地址：{{ contract.partyB?.address || '' }}</view>
+								<view>联系电话：{{ contract.partyB?.phone || '' }}</view>
+							</view>
+						</view>
+						<!-- 合同正文（后端返回HTML） -->
+						<view class="content-html" v-html="contentHtml"></view>
+						<!-- 签字栏 -->
+						<view class="signature">
+							<view class="sig-col">
+								<view class="sig-title">甲方（采购方）</view>
+								<view>签字：_______________</view>
+								<view>盖章：</view>
+								<view>日期：_______________</view>
+							</view>
+							<view class="sig-col">
+								<view class="sig-title">乙方（供应方）</view>
+								<view>签字：_______________</view>
+								<view>盖章：</view>
+								<view>日期：_______________</view>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+        <!-- 底部操作按钮 -->
+        <view class="bottom-actions">
+            <u-button type="info" size="small" class="action-btn" shape="circle" @click="goBack">
+                分享
+            </u-button>
+            <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadPdf">
+                下载
+            </u-button>
+        </view>
+	</view>
+</template>
+
+<script>
+import api from '@/utils/api.js'
+
+export default {
+	data() {
+		return {
+			contract: {},
+			contentHtml: '',
+			loading: true
+		}
+	},
+	onLoad(options) {
+		try {
+			const payload = options.data
+			if (!payload) { this.loading = false; return }
+			const data = JSON.parse(decodeURIComponent(payload))
+			this.fetchContract(data)
+		} catch (e) { this.loading = false }
+	},
+	methods: {
+		goBack() { uni.navigateBack() },
+		async fetchContract(data) {
+			try {
+				uni.showLoading({ title: '生成合同中...', mask: true })
+				const res = await api.contract.generate(data)
+				if (res.code === 0 && res.data) {
+					this.contract = res.data
+					const html = typeof res.data.content === 'string' ? res.data.content.replace(/\r\n|\n|\r/g, '<br/>') : (res.data.content || '')
+					this.contentHtml = html
+				} else {
+					uni.showToast({ title: res.msg || '生成合同失败', icon: 'none' })
+				}
+			} catch (e) {
+				uni.showToast({ title: '生成合同失败', icon: 'none' })
+			} finally {
+				this.loading = false
+				uni.hideLoading()
+			}
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.contract-page { background: #fff; }
+.navbar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 32rpx; background: #fff; border-bottom: 1px solid #e4e7ed; position: fixed; top:0; left:0; right:0; z-index:1000; }
+.nav-left, .nav-right { width:60rpx; height:60rpx; display:flex; align-items:center; justify-content:center; }
+.nav-title { flex:1; text-align:center; font-size:32rpx; font-weight:600; color:#303133; }
+.content { padding-top: 88rpx; height: calc(100vh - 88rpx); }
+.wrap { padding: 16rpx; }
+.paper { padding: 24rpx 0 55px 0; min-height: 600rpx; font-size: 26rpx;}
+.title { font-size: 36rpx; font-weight: 700; }
+.meta { display:flex; align-items:center; margin-bottom: 16rpx; color:#606266; font-size: 26rpx; }
+.party-table { display:flex; gap: 24rpx; margin: 16rpx 0; color:#303133;}
+.party-col { flex:1; padding: 16rpx 0; }
+.party-title { font-weight: 600; margin-bottom: 8rpx; }
+.content-html { font-size: 26rpx; color:#303133; line-height: 1.7; white-space: normal; word-break: break-word; }
+.signature { display:flex; gap:24rpx; margin-top: 32rpx; padding-top: 16rpx; border-top: 1px dashed #e4e7ed; }
+.sig-col { flex:1; text-align:center; }
+.sig-title { font-weight: 600; margin-bottom: 8rpx; }
+.loading { text-align:center; color:#909399; padding: 32rpx 0; }
+/* 底部操作按钮 */
+.bottom-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: flex-end;
+    font-size: 28rpx;
+    gap: 16rpx;
+    padding: 24rpx;
+    padding-left: 30%;
+    background: #fff;
+    box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.action-btn {
+    flex: 1;
+}
+</style>
+
+
