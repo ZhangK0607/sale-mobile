@@ -290,10 +290,4 @@ export default {
   margin-top: 20rpx;
 }
 
-// 强制覆盖可能的样式冲突
-:deep(.u-button--primary) {
-  background-color: $u-primary !important;
-  border-color: $u-primary !important;
-  color: #ffffff !important;
-}
 </style>

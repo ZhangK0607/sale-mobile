@@ -68,6 +68,8 @@
 	}
 </script>
 
-<style>
+<style lang="scss">
+	@import "uview-plus/index.scss";
+	/* 注意要写在第一行，同时给style标签加入lang="scss"属性 */
 	/*每个页面公共css */
 </style>

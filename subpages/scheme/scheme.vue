@@ -136,7 +136,7 @@
 <script>
 import api from '@/utils/api.js'
 
-export default {
+	export default {
 	data() {
 		return {
 			productList: [], // 产品列表
