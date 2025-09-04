@@ -55,7 +55,6 @@
         <u-checkbox-group v-model="checkboxValue" @change="onRememberChange">
           <u-checkbox 
             name="remember"
-            active-color="#5DADE2"
             label="记住我"
             label-size="14"
             icon-size="14"
@@ -70,6 +69,7 @@
         :loading-text="'登录中...'"
         @click="handleLogin"
         :disabled="loading"
+        class="login-btn"
       >
         登录
       </u-button>
@@ -247,7 +247,7 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .login-container {
   padding: 80rpx 80rpx 40rpx;
   display: flex;
@@ -283,5 +283,17 @@ export default {
   color: #333333;
   font-weight: 500;
   margin-bottom: 12rpx;
+}
+
+// 修复登录按钮样式优先级问题
+.login-btn {
+  margin-top: 20rpx;
+}
+
+// 强制覆盖可能的样式冲突
+:deep(.u-button--primary) {
+  background-color: $u-primary !important;
+  border-color: $u-primary !important;
+  color: #ffffff !important;
 }
 </style>

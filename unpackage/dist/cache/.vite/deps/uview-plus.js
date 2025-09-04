@@ -2978,7 +2978,11 @@ uni.onLocaleChange((locale) => {
 });
 function t(value, params2 = {}) {
   if (value) {
-    let result = settings.locales[settings.lang][value] || value;
+    let lang = settings.lang;
+    if (!settings.locales[settings.lang]) {
+      lang = "zh-Hans";
+    }
+    let result = settings.locales[lang][value] || value;
     Object.keys(params2).forEach((key) => {
       const reg = new RegExp(`{${key}}`, "g");
       result = result.replace(reg, params2[key]);
@@ -3915,11 +3919,14 @@ var popup_default = {
     safeAreaInsetBottom: true,
     safeAreaInsetTop: false,
     closeIconPos: "top-right",
-    round: 0,
+    round: "20px",
     zoom: true,
     bgColor: "",
     overlayOpacity: 0.5,
-    pageInline: false
+    pageInline: false,
+    touchable: false,
+    minHeight: "200px",
+    maxHeight: "600px"
   }
 };
 
@@ -4120,7 +4127,8 @@ var slider_default = {
     disabled: false,
     blockStyle: {},
     useNative: false,
-    height: "2px"
+    height: "2px",
+    innerStyle: {}
   }
 };
 
@@ -4284,7 +4292,9 @@ var tabbar_default = {
     activeColor: "#1989fa",
     inactiveColor: "#7d7e80",
     fixed: true,
-    placeholder: true
+    placeholder: true,
+    borderColor: "",
+    backgroundColor: ""
   }
 };
 
@@ -4297,7 +4307,8 @@ var tabbarItem_default = {
     badge: null,
     dot: false,
     text: "",
-    badgeStyle: "top: 6px;right:2px;"
+    badgeStyle: "top: 6px;right:2px;",
+    mode: ""
   }
 };
 
@@ -4466,7 +4477,8 @@ var tooltip_default = {
     overlay: true,
     showToast: true,
     popupBgColor: "",
-    triggerMode: "longpress"
+    triggerMode: "longpress",
+    forcePosition: {}
   }
 };
 

@@ -84,8 +84,26 @@ export const file = {
   uploadImage: (filePath) => upload(API.UPLOAD_IMAGE, filePath),
 }
 
+// 微信相关API
+export const wechat = {
+  // 微信登录
+  login: (data) => http('POST', '/wechat/login', data),
+  
+  // 微信注册  
+  register: (data) => http('POST', '/wechat/register', data),
+  
+  // 获取微信用户信息
+  getUserInfo: () => http('GET', '/wechat/userinfo'),
+  
+  // 绑定手机号
+  bindPhone: (data) => http('POST', '/wechat/bind-phone', data),
+  
+  // 生成小程序码
+  generateQRCode: (data) => http('POST', '/wechat/qrcode', data)
+}
+
 // 默认导出
-export default { user, dict, product, quotation, ppt, contract, file }
+export default { user, dict, product, quotation, ppt, contract, file, wechat }
 
 /**
  * 使用示例：
