@@ -14,45 +14,53 @@
 			}
 		},
 		{
-			"path": "pages/product/detail",
-			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "产品详情"
-			}
-		},
-		{
-			"path": "pages/scheme/scheme",
-			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "生成方案"
-			}
-		},
-		{
-			"path": "pages/quotation/quotation",
-			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "报价单"
-			}
-		},
-		{
-			"path": "pages/ppt/ppt",
-			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "PPT预览"
-			}
-		},
-		{
-			"path": "pages/contract/contract",
-			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "产品采购合同"
-			}
-		},
-		{
 			"path": "pages/profile/profile",
 			"style": {
 				"navigationBarTitleText": "我的"
 			}
+		}
+	],
+	"subPackages": [
+		{
+			"root": "subpages",
+			"name": "main",
+			"pages": [
+				{
+					"path": "product/detail",
+					"style": {
+						"navigationStyle": "custom",
+						"navigationBarTitleText": "产品详情"
+					}
+				},
+				{
+					"path": "scheme/scheme",
+					"style": {
+						"navigationStyle": "custom",
+						"navigationBarTitleText": "生成方案"
+					}
+				},
+				{
+					"path": "quotation/quotation",
+					"style": {
+						"navigationStyle": "custom",
+						"navigationBarTitleText": "报价单"
+					}
+				},
+				{
+					"path": "ppt/ppt",
+					"style": {
+						"navigationStyle": "custom",
+						"navigationBarTitleText": "PPT预览"
+					}
+				},
+				{
+					"path": "contract/contract",
+					"style": {
+						"navigationStyle": "custom",
+						"navigationBarTitleText": "产品采购合同"
+					}
+				}
+			]
 		}
 	],
 	"easycom": {

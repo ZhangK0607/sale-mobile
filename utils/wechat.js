@@ -346,7 +346,7 @@ export default wechat
  *   onShareAppMessage() {
  *     return wechat.share.shareToFriend({
  *       title: '我的产品推荐',
- *       path: '/pages/product/detail?id=123'
+ *       path: '/subpages/product/detail?id=123'
  *     })
  *   }
  * }

@@ -225,7 +225,7 @@ export default {
 		// 跳转到产品详情页
 		goToProductDetail(product) {
 			uni.navigateTo({
-				url: `/pages/product/detail?id=${product.id}`
+				url: `/subpages/product/detail?id=${product.id}`
 			})
 		},
 		// 生成报价单
@@ -264,7 +264,7 @@ export default {
 					// 跳转到报价单页面
 					const quotationData = encodeURIComponent(JSON.stringify(response.data))
 					uni.navigateTo({
-						url: `/pages/quotation/quotation?quotationData=${quotationData}`
+						url: `/subpages/quotation/quotation?quotationData=${quotationData}`
 					})
 				} else {
 					uni.showToast({
@@ -294,7 +294,7 @@ export default {
 				totalPrice: this.totalAmount
 			}
 			const payload = encodeURIComponent(JSON.stringify(requestData))
-			uni.navigateTo({ url: `/pages/contract/contract?data=${payload}` })
+			uni.navigateTo({ url: `/subpages/contract/contract?data=${payload}` })
 		},
 		// 生成PPT
 		async generateProposal() {
@@ -304,7 +304,7 @@ export default {
 				return
 			}
 			const payload = encodeURIComponent(JSON.stringify(selectedProducts))
-			uni.navigateTo({ url: `/pages/ppt/ppt?products=${payload}` })
+			uni.navigateTo({ url: `/subpages/ppt/ppt?products=${payload}` })
 		}
 	}
 }

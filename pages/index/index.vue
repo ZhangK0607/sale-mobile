@@ -315,7 +315,7 @@
 				// 将推荐产品数据传递到生成方案页面
 				const productData = encodeURIComponent(JSON.stringify(this.recommendProducts))
 				uni.navigateTo({
-					url: `/pages/scheme/scheme?productData=${productData}`
+					url: `/subpages/scheme/scheme?productData=${productData}`
 				})
 			},
 			confirmBudget() {
@@ -368,9 +368,9 @@
 			},
 			// 跳转到产品详情页
 			goToProductDetail(product) {
-				uni.navigateTo({
-					url: `/pages/product/detail?id=${product.id}`
-				})
+							uni.navigateTo({
+				url: `/subpages/product/detail?id=${product.id}`
+			})
 			},
 			confirmProCount() {
 				this.closeDropdown()
