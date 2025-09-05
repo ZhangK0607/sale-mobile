@@ -121,6 +121,16 @@ function handleResponse(res, options = {}) {
   // 处理正常的JSON响应
   const responseData = res.data
   
+  // vConsole 调试日志 - 响应数据
+  // #ifdef H5
+  if (process.env.NODE_ENV === 'development') {
+    console.group(`📥 API响应: ${res.statusCode}`)
+    console.log('📦 响应数据:', responseData)
+    console.log('⏱️ 响应时间:', new Date().toLocaleTimeString())
+    console.groupEnd()
+  }
+  // #endif
+  
   // HTTP状态码错误
   if (res.statusCode === 401) {
     return handleError({ code: 401, message: '登录已超时，请重新登录' }, 401)
@@ -164,6 +174,17 @@ function http(method = 'GET', url = '', data = {}, options = {}) {
   // 获取token和tenant-id
   const accessToken = uni.getStorageSync('accessToken')
   const tenantId = uni.getStorageSync('tenant-id')
+  
+  // vConsole 调试日志
+  // #ifdef H5
+  if (process.env.NODE_ENV === 'development') {
+    console.group(`🌐 API请求: ${method} ${url}`)
+    console.log('📤 请求数据:', data)
+    console.log('🔑 Token:', accessToken ? '已设置' : '未设置')
+    console.log('🏢 租户ID:', tenantId || '未设置')
+    console.groupEnd()
+  }
+  // #endif
   
   return new Promise((resolve, reject) => {
     uni.request({

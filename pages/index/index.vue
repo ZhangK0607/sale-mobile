@@ -65,7 +65,7 @@
 							</u-input>
 							<view class="budget-actions">
 								<u-button 
-									type="default" 
+									type="info" 
 									size="small" 
 									@click="cancelDropdown('budget')">
 									重置
@@ -96,7 +96,7 @@
 						    </view>
 							<view class="budget-actions">
 								<u-button 
-									type="default" 
+									type="info" 
 									size="small" 
 									@click="cancelDropdown('typeLabels', [])">
 									重置
@@ -123,7 +123,7 @@
 							</u-input>
 							<view class="budget-actions">
 								<u-button 
-									type="default" 
+									type="info" 
 									size="small" 
 									@click="cancelDropdown('productCount')">
 									重置
@@ -154,7 +154,7 @@
 							</view>
 							<view class="budget-actions">
 								<u-button 
-									type="default" 
+									type="info" 
 									size="small" 
 									@click="cancelDropdown('labels', [])">
 									重置
@@ -669,12 +669,6 @@
 	}
 	.submit { margin-top: 24rpx; }
 	
-	/* 行业标签间距 */
-	.industry-tag {
-		margin-right: 16rpx;
-		margin-bottom: 16rpx;
-	}
-	
 	/* 预算输入弹窗样式 */
 	.budget-input-container {
 		padding: 20rpx 0;
@@ -744,11 +738,18 @@
 
 <!-- 添加全局样式确保 dropdown 组件正常显示 -->
 <style>
+    .u-input{
+    	background: #fff;
+    }
 	/* 全局样式，确保uview dropdown组件的遮罩和内容能正常显示 */
 	.u-dropdown__popup,
 	.u-dropdown__mask,
 	.u-dropdown__content {
 		z-index: 99999 !important;
+	}
+	.u-dropdown__content {
+		width: calc(100% + 48rpx)!important;
+		left: -24rpx!important;
 	}
 	
 	/* 确保页面容器不会裁剪dropdown内容 */
@@ -850,5 +851,7 @@
 	.industry-tag-container{
 		display: flex;
 		flex-wrap: wrap;
+		gap: 8px;
+        row-gap: 16rpx;
 	}
 </style>
