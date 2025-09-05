@@ -7,8 +7,8 @@ import http from './request.js'
 
 // 微信小程序配置
 const WECHAT_CONFIG = {
-  appId: 'wx88dfc93573be519b',
-  appSecret: '92e55a2a165dee25a79fa8c12338b053'
+  appId: 'wx0ac3dd92a9b9af16',
+  // appSecret: '92e55a2a165dee25a79fa8c12338b053'
 }
 
 // 微信相关API接口

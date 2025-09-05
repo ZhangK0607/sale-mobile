@@ -82,16 +82,18 @@
 					<u-dropdown-item title="行业类型">
 						<view class="slot-content">
 							<!-- 行业类型数据循环出来的tag -->
-							<u-tag 
-								v-for="item in industryOptions" 
-								:key="item.value" 
-								:text="item.label" 
-								:plain= "typeLabels.includes(item.value) ? false : true" 
-								size="mini"
-								shape="circle"
-								class="industry-tag"
-								@click="selectLabels('typeLabels', item.value)">
-							</u-tag>
+							<view class="industry-tag-container">
+						    	<u-tag 
+						    		v-for="item in industryOptions" 
+						    		:key="item.value" 
+						    		:text="item.label" 
+						    		:plain= "typeLabels.includes(item.value) ? false : true" 
+						    		size="mini"
+						    		shape="circle"
+						    		class="industry-tag"
+						    		@click="selectLabels('typeLabels', item.value)">
+						    	</u-tag>
+						    </view>
 							<view class="budget-actions">
 								<u-button 
 									type="default" 
@@ -138,16 +140,18 @@
 					<u-dropdown-item title="标签" :options="tagOptions">
 						<view class="slot-content">
 							<!-- 标签数据循环出来的tag -->
-							<u-tag 
-								v-for="item in tagOptions" 
-								:key="item.value" 
-								:text="item.label" 
-								:plain= "labels.includes(item.value) ? false : true" 
-								size="mini"
-								shape="circle"
-								class="industry-tag"
-								@click="selectLabels('labels', item.value)">
-							</u-tag>
+							<view class="industry-tag-container">
+							    <u-tag 
+							    	v-for="item in tagOptions" 
+							    	:key="item.value" 
+							    	:text="item.label" 
+							    	:plain= "labels.includes(item.value) ? false : true" 
+							    	size="mini"
+							    	shape="circle"
+							    	class="industry-tag"
+							    	@click="selectLabels('labels', item.value)">
+							    </u-tag>
+							</view>
 							<view class="budget-actions">
 								<u-button 
 									type="default" 
@@ -842,5 +846,9 @@
 	}
 	.fab-text{
 		font-size: 20rpx;
+	}
+	.industry-tag-container{
+		display: flex;
+		flex-wrap: wrap;
 	}
 </style>

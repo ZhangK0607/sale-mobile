@@ -12,6 +12,27 @@
 		</view>
 
 		<scroll-view scroll-y class="content">
+			<!-- 产品轮播图 -->
+			<view v-if="showPicUrls && showPicUrls.length > 0" class="product-swiper">
+				<swiper 
+					class="swiper" 
+					:indicator-dots="true" 
+					:autoplay="true" 
+					:interval="3000" 
+					:duration="500"
+					indicator-color="rgba(255, 255, 255, 0.5)"
+					indicator-active-color="#5DADE2">
+					<swiper-item v-for="(image, index) in showPicUrls" :key="index">
+						<image 
+							:src="image" 
+							class="swiper-image" 
+							mode="aspectFill"
+							@click="previewShowImage(image, index)">
+						</image>
+					</swiper-item>
+				</swiper>
+			</view>
+			
 			<!-- 产品头部信息 -->
 			<view class="product-header">
 				<view class="product-main">
@@ -107,7 +128,8 @@ export default {
 				showPriLabels: [],
 				pubLabels: [],
 			},
-			productImages: [] // 产品图片列表
+			productImages: [], // 产品图片列表
+			showPicUrls: [] // 轮播图片列表
 		}
 	},
 	computed: {
@@ -173,14 +195,23 @@ export default {
 					const response = await api.product.fetchProductPptImages(this.productId)
 					
 					if (response.code === 0 && response.data) {
-						this.productImages = Array.isArray(response.data) ? response.data : [response.data]
+						this.productImages = Array.isArray(response.data?.pptPicUrls) ? response.data.pptPicUrls : []
+						this.showPicUrls = Array.isArray(response.data?.showPicUrls) ? response.data.showPicUrls : []
 					}
 				}
 			} catch (error) {
 				console.error('获取产品图片失败:', error)
 			}
 		},
-		// 预览图片
+		// 预览轮播图片
+		previewShowImage(currentUrl, index) {
+			uni.previewImage({
+				urls: this.showPicUrls,
+				current: currentUrl
+			})
+		},
+		
+		// 预览产品PPT图片
 		previewImage(currentUrl, index) {
 			const urls = this.productImages.map(img => img.url || img)
 			uni.previewImage({
@@ -196,6 +227,23 @@ export default {
 .product-detail {
 	min-height: 100vh;
 	background: #f5f5f5;
+}
+
+/* 产品轮播图 */
+.product-swiper {
+	width: 100%;
+	background: #fff;
+}
+
+.swiper {
+	width: 100%;
+	height: 400rpx;
+}
+
+.swiper-image {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
 }
 
 /* 自定义导航栏 */

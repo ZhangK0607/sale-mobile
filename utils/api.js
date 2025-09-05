@@ -11,6 +11,7 @@ const API = {
   REGISTER: '/user/register',
   USER_INFO: '/user/info',
   GET_TENANT_ID: '/system/tenant/get-id-by-name',
+  GET_PERMISSION_INFO: '/system/auth/get-permission-info',
   
   // 文件上传
   UPLOAD_IMAGE: '/upload/image',
@@ -29,6 +30,9 @@ export const user = {
   
   // 获取用户信息
   getInfo: () => http('GET', API.USER_INFO),
+  
+  // 获取用户权限信息
+  getPermissionInfo: () => http('GET', API.GET_PERMISSION_INFO),
   
   // 用户登出
   logout: () => http('POST', '/user/logout'),
@@ -55,7 +59,7 @@ export const product = {
   getProductDetail: (id) => http('GET', '/sale/product/detail', { id }),
   
   // 获取PPT图片
-  fetchProductPptImages: (id) => http('GET', '/sale/product/findPics', { id }),
+  fetchProductPptImages: (id) => http('GET', '/sale/product/getProductPics', { id }),
 }
 
 // 报价单相关API

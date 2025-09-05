@@ -218,15 +218,33 @@ export default {
         const loginResponse = await api.user.login(loginData)
         
         if (loginResponse.code === 0) {
-          // 登录成功
+          // 登录成功，保存token
+          uni.setStorageSync('accessToken', loginResponse.data.accessToken)
+          
+          // 获取用户权限信息
+          try {
+            const permissionResponse = await api.user.getPermissionInfo()
+            
+            if (permissionResponse.code === 0 && permissionResponse.data) {
+              // 只保存用户信息字段
+              const userInfo = permissionResponse.data.user
+              uni.setStorageSync('userInfo', userInfo)
+              
+              // 可选：保存其他权限信息（如果后续需要用到）
+              uni.setStorageSync('userRoles', permissionResponse.data.roles)
+              uni.setStorageSync('userPermissions', permissionResponse.data.permissions)
+              uni.setStorageSync('userMenus', permissionResponse.data.menus)
+            }
+          } catch (error) {
+            console.error('获取用户权限信息失败:', error)
+            // 权限信息获取失败不影响登录流程
+          }
+          
+          // 显示登录成功提示
           uni.showToast({
             title: '登录成功',
             icon: 'success'
           })
-          
-          // 保存token和用户信息
-          uni.setStorageSync('accessToken', loginResponse.data.accessToken)
-          uni.setStorageSync('userInfo', loginResponse.data)
           
           // 跳转到首页
           setTimeout(() => {
@@ -249,11 +267,13 @@ export default {
 
 <style lang="scss" scoped>
 .login-container {
-  padding: 80rpx 80rpx 40rpx;
+  padding: 10rpx 80rpx 40rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 .logo {

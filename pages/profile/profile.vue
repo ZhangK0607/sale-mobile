@@ -3,13 +3,16 @@
     <!-- 用户信息 -->
     <view class="user-info">
       <view class="avatar">
-        <u-avatar :src="userInfo.avatarUrl || '/static/default-avatar.png'" size="80"></u-avatar>
+        <u-avatar :src="userInfo.avatar || '/static/avatar.jpg'" size="80"></u-avatar>
       </view>
       <view class="user-details">
-        <view class="nickname">{{ userInfo.nickName || '未登录' }}</view>
+        <view class="nickname">{{ userInfo.nickname || userInfo.username || '未登录' }}</view>
+        <view class="username" v-if="userInfo.username && userInfo.username !== userInfo.nickname">
+          {{ userInfo.username }}
+        </view>
         <view class="login-status">
-          <text v-if="isLoggedIn" class="status-text logged">已登录</text>
-          <text v-else class="status-text not-logged">未登录</text>
+          <text class="status-text logged">已登录</text>
+          <!-- <text v-else class="status-text not-logged">未登录</text> -->
         </view>
       </view>
     </view>
@@ -17,35 +20,15 @@
     <!-- 菜单列表 -->
     <view class="menu-list">
       <u-cell-group :border="false">
-        <u-cell 
-          title="个人设置" 
-          icon="setting"
-          :is-link="true"
-          @click="goToSettings"
-        ></u-cell>
+        
         
         <u-cell 
-          title="关于我们" 
-          icon="info-circle"
-          :is-link="true"
-          @click="goToAbout"
-        ></u-cell>
-        
-        <u-cell 
-          v-if="isLoggedIn"
           title="退出登录" 
           icon="logout"
           :is-link="true"
           @click="handleLogout"
         ></u-cell>
-        
-        <u-cell 
-          v-else
-          title="立即登录" 
-          icon="account"
-          :is-link="true"
-          @click="goToLogin"
-        ></u-cell>
+
       </u-cell-group>
     </view>
   </view>
@@ -86,21 +69,6 @@ export default {
       }
     },
     
-    // 跳转到设置页面
-    goToSettings() {
-      uni.showToast({
-        title: '功能开发中',
-        icon: 'none'
-      })
-    },
-    
-    // 跳转到关于页面
-    goToAbout() {
-      uni.showToast({
-        title: '功能开发中',
-        icon: 'none'
-      })
-    },
     
     // 跳转到登录页面
     goToLogin() {
@@ -116,10 +84,49 @@ export default {
         content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
-            wechat.logout()
+            this.performLogout()
           }
         }
       })
+    },
+    
+    // 执行退出登录操作
+    performLogout() {
+      try {
+        // 清除所有本地存储的用户信息
+        uni.removeStorageSync('accessToken')
+        uni.removeStorageSync('userInfo')
+        uni.removeStorageSync('userRoles')
+        uni.removeStorageSync('userPermissions')
+        uni.removeStorageSync('userMenus')
+        uni.removeStorageSync('openId')
+        uni.removeStorageSync('tenant-id')
+        uni.removeStorageSync('rememberMe')
+        uni.removeStorageSync('savedUsername')
+        uni.removeStorageSync('savedTenantName')
+        
+        // 显示退出成功提示
+        uni.showToast({
+          title: '退出登录成功',
+          icon: 'success',
+          duration: 1500
+        })
+        
+        // 延迟跳转，让用户看到提示信息
+        setTimeout(() => {
+          // 使用reLaunch清空页面栈并跳转到登录页
+          uni.reLaunch({
+            url: '/pages/login/login'
+          })
+        }, 1500)
+        
+      } catch (error) {
+        console.error('退出登录失败:', error)
+        uni.showToast({
+          title: '退出登录失败',
+          icon: 'error'
+        })
+      }
     }
   }
 }
@@ -128,7 +135,8 @@ export default {
 <style lang="scss" scoped>
 .profile-container {
   background-color: #f5f5f5;
-  min-height: 100vh;
+  // min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .user-info {
@@ -150,6 +158,12 @@ export default {
 .nickname {
   font-size: 36rpx;
   font-weight: 500;
+  margin-bottom: 10rpx;
+}
+
+.username {
+  font-size: 28rpx;
+  opacity: 0.8;
   margin-bottom: 10rpx;
 }
 
