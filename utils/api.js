@@ -67,7 +67,9 @@ export const quotation = {
   // 生成报价单
   createQuotation: (data) => http('POST', '/sale/recommend/createQuotation', data),
   // 下载报价单PDF
-  downloadQuotationPdf: (orderNo) => http('GET', '/sale/recommend/downloadPdf', { orderNo }, { responseType: 'arraybuffer' }),
+  downloadQuotationPdf: (orderNo, period) => http('GET', '/sale/recommend/downloadPdf', { orderNo, period }, { responseType: 'arraybuffer' }),
+  // 分享报价单PDF
+  shareQuotationPdf: (params) => http('GET', '/sale/recommend/downloadPdf', params ),
 }
 
 // PPT相关API
@@ -76,11 +78,17 @@ export const ppt = {
   generate: (products) => http('POST', '/sale/recommend/generatePPT', products),
   // 下载PPT（返回文件流）
   download: (data) => http('POST', '/sale/recommend/downloadPPT', data, { responseType: 'arraybuffer' }),
+  // 下载PPT（返回文件流）
+  sharePPT: (data, isShare) => http('POST', '/sale/recommend/downloadPPT?isShare=' + isShare, data),
 }
 
 // 合同相关API
 export const contract = {
   generate: (data) => http('POST', '/sale/recommend/generateContract', data),
+  // 下载合同（返回文件流）
+  downloadContract: (data) => http('POST', '/sale/recommend/downloadContract', data, { responseType: 'arraybuffer' }),
+  // 分享合同（isShare可选，可能返回文件流或URL）
+  buildDownloadContract: (data) => http('POST', '/sale/recommend/downloadContract?isShare=' + (data?.isShare ?? ''), data),
 }
 
 // 文件上传API

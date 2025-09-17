@@ -69,13 +69,13 @@
                                 <view class="table-cell product-name">{{ product.name }}</view>
                                 <view class="table-cell">{{ product.supplier || '-' }}</view>
                                 <view class="table-cell">{{ product.num }}</view>
-                                <view class="table-cell price">¥{{ formatPrice(product.price) }}</view>
-                                <view class="table-cell price">¥{{ formatPrice(computeSubtotal(product)) }}</view>
+                                <view class="table-cell price">¥{{ formatPrice(product.price) }}/{{ periodUnit(product.period) }}</view>
+                                <view class="table-cell price">¥{{ formatPrice(product.subtotalPrice) }}</view>
                             </view>
                             <view class="table-row total-row">
                                 <view class="table-cell" colspan="2">总计金额：</view>
                                 <view class="table-cell total-price">¥{{
-                                    formatPrice(quotationData.productInfo.totalPrice) }}</view>
+                                    formatPrice(quotationData.productInfo.totalPrice) }}/{{ periodUnit(billingPeriod) }}</view>
                             </view>
                         </view>
                     </scroll-view>
@@ -93,7 +93,7 @@
 
         <!-- 底部操作按钮 -->
         <view class="bottom-actions">
-            <u-button type="info" size="small" class="action-btn" shape="circle" @click="goBack">
+            <u-button type="info" size="small" class="action-btn" shape="circle" @click="shareQuotation">
                 分享
             </u-button>
             <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadPdf">
@@ -117,7 +117,8 @@ export default {
                 createDay: '',
                 expireDay: '',
                 clause: ''
-            }
+            },
+            billingPeriod: ''
         }
     },
     onLoad(options) {
@@ -134,10 +135,46 @@ export default {
                 })
             }
         }
+        // 获取周期参数
+        if (options.period) {
+            this.billingPeriod = options.period
+        }
     },
     methods: {
         goBack() {
             uni.navigateBack()
+        },
+        async shareQuotation() {
+            if (!this.quotationData.orderNo) {
+                uni.showToast({ title: '未获取到报价单编号', icon: 'none' })
+                return
+            }
+            try {
+                uni.showLoading({ title: '生成分享链接...', mask: true })
+                const res = await api.quotation.shareQuotationPdf({ orderNo:this.quotationData.orderNo, period: this.billingPeriod, isShare: true })
+                const url = res?.data
+                if (!url) {
+                    uni.showToast({ title: '未获取到分享链接', icon: 'none' })
+                    return
+                }
+                // 复制到剪贴板并展示
+                if (uni.setClipboardData) {
+                    uni.setClipboardData({ data: url, success: () => {} })
+                }
+                uni.showModal({
+                    title: '分享链接',
+                    content: url,
+                    showCancel: false
+                })
+            } catch (e) {
+                uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
+            } finally {
+                uni.hideLoading()
+            }
+        },
+        periodUnit(period) {
+            const unitMap = { year: '年', season: '季', month: '月', disposable: '一次性' }
+            return unitMap[period] || '一次性'
         },
         // 格式化价格
         formatPrice(price) {
@@ -172,7 +209,7 @@ export default {
             try {
                 uni.showLoading({ title: '生成PDF中...', mask: true })
                 // 请求文件流（arraybuffer）
-                const res = await api.quotation.downloadQuotationPdf(this.quotationData.orderNo)
+                const res = await api.quotation.downloadQuotationPdf(this.quotationData.orderNo, this.billingPeriod)
                 const arrayBuffer = res?.data || res
                 if (!arrayBuffer) throw new Error('未获取到文件数据')
 

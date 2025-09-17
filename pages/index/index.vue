@@ -52,7 +52,7 @@
 			</view>
 			<view class="filters">
 				<u-dropdown ref="dropdown">
-					<u-dropdown-item title="产品预算" >
+					<!-- <u-dropdown-item title="产品预算" >
 						<view class="slot-content">
 							<u-input 
 								v-model="budget" 
@@ -78,7 +78,7 @@
 								</u-button>
 							</view>
 						</view>
-					</u-dropdown-item>
+					</u-dropdown-item> -->
 					<u-dropdown-item title="行业类型">
 						<view class="slot-content">
 							<!-- 行业类型数据循环出来的tag -->
@@ -189,9 +189,9 @@
 							mode="aspectFit">
 						</image>
 						<view class="product-details">
-							<view class="product-name">{{ product.name || '产品名称' }}</view>
-							<view class="product-desc">{{ product.description || '产品描述信息' }}</view>
-							<view class="product-price">￥{{ product.price || '50000' }}</view>
+							<view class="product-name">{{ product.name}}</view>
+							<view class="product-desc">{{ product.description || '' }}</view>
+							<view class="product-price">￥{{ product.price || '' }}/{{ periodUnit(product.period) }}</view>
 						</view>
 					</view>
 				</view>
@@ -217,7 +217,7 @@
 		data() {
 			return {
 				description: '思政助手',
-				budget: '', // 实际的预算值
+				// budget: '', // 实际的预算值
 				productCount: '',
 				typeLabels: [],
 				labels: [],
@@ -257,7 +257,7 @@
 				const requestData = {
 					description: this.description || '',
 					typeLabels: this.typeLabels || [],
-					budget: this.budget || '',
+					// budget: this.budget || '',
 					productCount: this.productCount || '',
 					labels: this.labels.join(',') || ''
 				}
@@ -273,12 +273,10 @@
 						this.recommendProducts = response.data.products || []
 						
 						uni.showToast({ 
-							title: '推荐成功', 
+							title: response.msg || `推荐成功`, 
 							icon: 'success',
 							duration: 2000
 						})
-						
-						console.log('推荐结果：', response.data)
 						
 						// 滚动到推荐结果区域
 						setTimeout(() => {
@@ -562,6 +560,15 @@
 			// 文本输入事件处理
 			onTextInput(event) {
 				this.description = event.target.value
+			},
+			periodUnit(period) {
+				const unitMap = {
+					year: '年',
+					season: '季',
+					month: '月',
+					disposable: '一次性'
+				}
+				return unitMap[period] || '一次性'
 			}
 		}
 	}
@@ -763,8 +770,6 @@
 	}
 	
 	/* 推荐产品展示样式 */
-	.recommend-section {
-	}
 	
 	.recommend-title {
 		font-size: 28rpx;
@@ -828,6 +833,7 @@
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}

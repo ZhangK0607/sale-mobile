@@ -61,10 +61,10 @@
 		</scroll-view>
         <!-- 底部操作按钮 -->
         <view class="bottom-actions">
-            <u-button type="info" size="small" class="action-btn" shape="circle" @click="goBack">
+            <u-button type="info" size="small" class="action-btn" shape="circle" @click="shareContract">
                 分享
             </u-button>
-            <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadPdf">
+            <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadContractPdf">
                 下载
             </u-button>
         </view>
@@ -107,6 +107,84 @@ export default {
 				uni.showToast({ title: '生成合同失败', icon: 'none' })
 			} finally {
 				this.loading = false
+				uni.hideLoading()
+		    }
+	    },
+		// 下载合同word
+		async downloadContractPdf() {
+			try {
+				if (!this.contract?.contractNo || !this.contentHtml) {
+					uni.showToast({ title: '合同数据未就绪', icon: 'none' })
+					return
+				}
+				uni.showLoading({ title: '下载中...', mask: true })
+				const res = await api.contract.downloadContract({ contractNo: this.contract.contractNo, content: this.contentHtml })
+				const arrayBuffer = res?.data || res
+				if (!arrayBuffer) throw new Error('未获取到文件数据')
+
+				const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
+				if (isH5) {
+					const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+					const url = window.URL.createObjectURL(blob)
+					const a = document.createElement('a')
+					a.href = url
+					a.download = `合同_${this.contract.contractNo || Date.now()}.docx`
+					document.body.appendChild(a)
+					a.click()
+					document.body.removeChild(a)
+					window.URL.revokeObjectURL(url)
+				} else if (typeof plus !== 'undefined' && plus?.io) {
+					const fileName = `合同_${this.contract.contractNo || Date.now()}.docx`
+					plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
+						fs.root.getFile(fileName, { create: true }, (entry) => {
+							entry.createWriter((writer) => {
+								writer.write(arrayBuffer)
+								uni.showToast({ title: '已保存到本地', icon: 'success' })
+							})
+						})
+					})
+				} else {
+					uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
+				}
+			} catch (e) {
+				uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
+			} finally {
+				uni.hideLoading()
+			}
+		},
+		// 分享合同（返回链接或直接返回文件流）
+		async shareContract() {
+			try {
+				if (!this.contract?.contractNo || !this.contentHtml) {
+					uni.showToast({ title: '合同数据未就绪', icon: 'none' })
+					return
+				}
+				uni.showLoading({ title: '生成分享链接...', mask: true })
+				const res = await api.contract.buildDownloadContract({ contractNo: this.contract.contractNo, content: this.contentHtml, isShare: true })
+				const data = res?.data
+				// 如果后端直接返回URL
+				if (typeof data === 'string') {
+					if (uni.setClipboardData) {
+						uni.setClipboardData({ data, success: () => {} })
+					}
+					uni.showModal({ title: '分享链接', content: data, showCancel: false })
+					return
+				}
+				// 否则尝试按文件流处理
+				const arrayBuffer = data || res
+				if (arrayBuffer && (typeof window !== 'undefined')) {
+					const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+					const url = window.URL.createObjectURL(blob)
+					if (uni.setClipboardData) {
+						uni.setClipboardData({ data: url, success: () => {} })
+					}
+					uni.showModal({ title: '分享链接', content: url, showCancel: false })
+					return
+				}
+				uni.showToast({ title: '未获取到分享内容', icon: 'none' })
+			} catch (e) {
+				uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
+			} finally {
 				uni.hideLoading()
 			}
 		}

@@ -42,7 +42,7 @@
 							<view class="product-name">{{ product.name || '' }}</view>
 							<view class="product-desc">{{ product.description || '' }}</view>
 							<view class="price-quantity-row">
-								<view class="product-price">￥{{ product.price || '' }}</view>
+							<view class="product-price">￥{{ product.price || '' }}/{{ periodUnit(product.period) }}</view>
 								<view class="quantity-input" @click.stop>
 									<u-number-box 
 										v-model="product.num" 
@@ -100,7 +100,15 @@
 					</view>
 					<text class="selected-count">已选{{ selectedCount }}条</text>
 				</view>
-				<text class="summary-label">合计金额: <text class="summary-value">￥{{ totalAmount }}</text></text>
+				<view class="summary-right">
+					<text class="summary-label">合计金额: <text class="summary-value">￥{{ formatAmount(calculatedTotal) }}</text></text>
+					<picker mode="selector" :range="periodOptions" range-key="label" :value="periodIndex" @change="onPeriodChange">
+						<view class="period-trigger">
+							<text class="period-selected">/{{ periodUnit(selectedPeriod) }}</text>
+							<u-icon name="arrow-down" color="#909399" size="14" class="period-icon"></u-icon>
+						</view>
+					</picker>
+				</view>
 			</view>
 			<u-divider style="margin: 8px 0;"></u-divider>
 			<view class="bottom-actions">
@@ -141,7 +149,12 @@ import api from '@/utils/api.js'
 		return {
 			productList: [], // 产品列表
 			selectedProducts: [], // 选中状态数组
-			totalAmount: 0 // 总金额
+		    selectedPeriod: 'year',
+		    periodOptions: [
+		    	{ value: 'year', label: '年' },
+		    	{ value: 'season', label: '季度' },
+		    	{ value: 'month', label: '月' }
+		    ]
 		}
 	},
 	onLoad(options) {
@@ -173,15 +186,19 @@ import api from '@/utils/api.js'
 	computed: {
 		// 计算总金额（只计算选中的产品，包含数量）
 		calculatedTotal() {
-			return this.productList.reduce((total, product, index) => {
-				if (this.selectedProducts[index]) {
-					const price = parseFloat(product.price) || 0
-					const num = product.num || 1
-					return total + (price * num)
-				}
-				return total
-			}, 0)
+		    const total = this.productList.reduce((sum, p, index) => {
+		    	if (!this.selectedProducts[index]) return sum
+		    	const price = parseFloat(p.price) || 0
+		    	const src = p.period
+		    	const factor = this.periodFactor(this.selectedPeriod, src)
+		    	const qty = p.num || 0
+		    	return sum + (price * factor * qty)
+		    }, 0)
+		    return Math.round(total * 100) / 100
 		},
+	periodIndex() {
+		return Math.max(0, this.periodOptions.findIndex(opt => opt.value === this.selectedPeriod))
+	},
 		// 是否全选
 		isAllSelected() {
 			return this.productList.length > 0 && this.selectedProducts.every(selected => selected)
@@ -191,24 +208,57 @@ import api from '@/utils/api.js'
 			return this.selectedProducts.filter(selected => selected).length
 		}
 	},
-	watch: {
-		productList: {
-			handler() {
-				this.totalAmount = this.calculatedTotal
-			},
-			deep: true
-		},
-		selectedProducts: {
-			handler() {
-				this.totalAmount = this.calculatedTotal
-			},
-			deep: true
-		}
-	},
+watch: {},
 	methods: {
 		goBack() {
 			uni.navigateBack()
 		},
+	    onPeriodChange(e) {
+	    	const index = e.detail.value
+	    	const option = this.periodOptions[index]
+	    	this.selectedPeriod = option?.value || this.selectedPeriod
+	    },
+	    computeSubtotal(price, quantity, productPeriod, targetPeriod) {
+	    	const factor = this.periodFactor(targetPeriod, productPeriod)
+	    	const subtotalPrice = (Number(price) || 0) * (Number(quantity) || 0) * factor
+	    	return Math.round(subtotalPrice * 100) / 100
+	    },
+	    formatAmount(value) {
+	    	const n = Number(value)
+	    	if (!isFinite(n)) return '0.00'
+	    	return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+	    },
+	    periodFactor(target, source) {
+	    	const src = source || 'disposable'
+	    	if (target === 'month') {
+	    		if (src === 'month') return 1
+	    		if (src === 'season') return 1 / 3
+	    		if (src === 'year') return 1 / 12
+	    		return 1
+	    	}
+	    	if (target === 'season') {
+	    		if (src === 'season') return 1
+	    		if (src === 'month') return 3
+	    		if (src === 'year') return 1 / 4
+	    		return 1
+	    	}
+	    	if (target === 'year') {
+	    		if (src === 'year') return 1
+	    		if (src === 'month') return 12
+	    		if (src === 'season') return 4
+	    		return 1
+	    	}
+	    	return 1
+	    },
+	    periodUnit(period) {
+	    	const unitMap = {
+	    		year: '年',
+	    		season: '季',
+	    		month: '月',
+	    		disposable: '一次性'
+	    	}
+	    	return unitMap[period] || '一次性'
+	    },
 		// 切换单个产品选中状态
 		toggleProductSelect(index) {
 			this.$set(this.selectedProducts, index, !this.selectedProducts[index])
@@ -248,11 +298,15 @@ import api from '@/utils/api.js'
 				const requestData = {
 					products: selectedProducts.map(p => {
                       const { createTime, updateTime, ...rest } = p
-                      return {
-                        ...rest,
-                      };
+				      const price = typeof p?.price === 'number' ? p.price : parseFloat(p?.price) || 0
+				      const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : parseFloat(p?.num) || 0
+				      const subtotalPrice = this.computeSubtotal(price, quantity, p?.period, this.selectedPeriod)
+				      return {
+				        ...rest,
+				        subtotalPrice,
+				      };
                     }),
-					totalPrice: this.totalAmount
+					totalPrice: this.calculatedTotal
 				}
 
 				console.log('生成报价单请求数据:', requestData)
@@ -264,7 +318,7 @@ import api from '@/utils/api.js'
 					// 跳转到报价单页面
 					const quotationData = encodeURIComponent(JSON.stringify(response.data))
 					uni.navigateTo({
-						url: `/subpages/quotation/quotation?quotationData=${quotationData}`
+						url: `/subpages/quotation/quotation?quotationData=${quotationData}&period=${this.selectedPeriod}`
 					})
 				} else {
 					uni.showToast({
@@ -290,8 +344,17 @@ import api from '@/utils/api.js'
 				return
 			}
 			const requestData = {
-				products: selectedProducts.map(p => ({ ...p })),
-				totalPrice: this.totalAmount
+				products: selectedProducts.map(p => {
+                  const { createTime, updateTime, ...rest } = p
+				  const price = typeof p?.price === 'number' ? p.price : parseFloat(p?.price) || 0
+				  const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : parseFloat(p?.num) || 0
+				  const subtotalPrice = this.computeSubtotal(price, quantity, p?.period, this.selectedPeriod)
+				  return {
+				    ...rest,
+				    subtotalPrice,
+				  };
+                }),
+				totalPrice: this.calculatedTotal
 			}
 			const payload = encodeURIComponent(JSON.stringify(requestData))
 			uni.navigateTo({ url: `/subpages/contract/contract?data=${payload}` })
@@ -459,6 +522,7 @@ import api from '@/utils/api.js'
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 2;
+	line-clamp: 2;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
@@ -501,6 +565,28 @@ import api from '@/utils/api.js'
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.summary-right {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+}
+
+.period-selected {
+	font-size: 28rpx;
+	color: #303133;
+	margin-left: 8rpx;
+}
+
+.period-trigger{
+	display: inline-flex;
+	align-items: center;
+	gap: 8rpx;
+}
+
+.period-icon{
+	margin-left: 4rpx;
 }
 
 /* 全选按钮容器 */

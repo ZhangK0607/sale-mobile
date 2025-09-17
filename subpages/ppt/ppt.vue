@@ -22,7 +22,7 @@
 		</scroll-view>
 		<!-- 底部操作按钮 -->
         <view class="bottom-actions">
-            <u-button type="info" size="small" class="action-btn" shape="circle" @click="shareToFriend">
+            <u-button type="info" size="small" class="action-btn" shape="circle" @click="sharePPTLink">
                 分享
             </u-button>
             <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadPdf">
@@ -181,6 +181,35 @@ export default {
 			} catch (error) {
 				console.error('分享失败:', error)
 				uni.showToast({ title: '分享准备失败', icon: 'none' })
+			} finally {
+				uni.hideLoading()
+			}
+		},
+
+		// 直接生成分享链接（调用后端 sharePPT 接口）
+		async sharePPTLink() {
+			try {
+				if (!this.imageUrls || this.imageUrls.length === 0) {
+					uni.showToast({ title: '请先生成PPT', icon: 'none' })
+					return
+				}
+				uni.showLoading({ title: '生成分享链接...', mask: true })
+				const res = await api.ppt.sharePPT(this.imageUrls, true)
+				const url = res?.data
+				if (!url) {
+					uni.showToast({ title: '未获取到分享链接', icon: 'none' })
+					return
+				}
+				if (uni.setClipboardData) {
+					uni.setClipboardData({ data: url, success: () => {} })
+				}
+				uni.showModal({
+					title: '分享链接',
+					content: url,
+					showCancel: false
+				})
+			} catch (e) {
+				uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
 			} finally {
 				uni.hideLoading()
 			}
