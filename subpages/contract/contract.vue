@@ -1,12 +1,12 @@
 <template>
 	<view class="contract-page">
-		<view class="navbar">
+		<!-- <view class="navbar">
 			<view class="nav-left" @click="goBack">
 				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
 			</view>
 			<view class="nav-title">产品采购合同</view>
 			<view class="nav-right"></view>
-		</view>
+		</view> -->
 
 		<scroll-view scroll-y class="content">
 			<view class="wrap">
@@ -197,7 +197,7 @@ export default {
 .navbar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 32rpx; background: #fff; border-bottom: 1px solid #e4e7ed; position: fixed; top:0; left:0; right:0; z-index:1000; }
 .nav-left, .nav-right { width:60rpx; height:60rpx; display:flex; align-items:center; justify-content:center; }
 .nav-title { flex:1; text-align:center; font-size:32rpx; font-weight:600; color:#303133; }
-.content { padding-top: 88rpx; height: calc(100vh - 88rpx); }
+.content { height: calc(100vh - 88rpx); }
 .wrap { padding: 16rpx; }
 .paper { padding: 24rpx 0 55px 0; min-height: 600rpx; font-size: 26rpx;}
 .title { font-size: 36rpx; font-weight: 700; }

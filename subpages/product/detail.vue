@@ -1,7 +1,7 @@
 <template>
 	<view class="product-detail">
 		<!-- 自定义导航栏 -->
-		<view class="navbar">
+		<!-- <view class="navbar">
 			<view class="nav-left" @click="goBack">
 				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
 			</view>
@@ -9,7 +9,7 @@
 			<view class="nav-right">
 				<u-icon name="more-dot-fill" color="#333" size="20"></u-icon>
 			</view>
-		</view>
+		</view> -->
 
 		<scroll-view scroll-y class="content">
 			<!-- 产品轮播图 -->
@@ -225,7 +225,7 @@ export default {
 
 <style lang="scss" scoped>
 .product-detail {
-	min-height: 100vh;
+	// min-height: 100vh;
 	background: #f5f5f5;
 }
 
@@ -280,7 +280,6 @@ export default {
 
 /* 内容区域 */
 .content {
-	padding-top: 88rpx;
 	height: calc(100vh - 88rpx);
 }
 
@@ -321,6 +320,7 @@ export default {
 	margin-right: 16rpx;
 	flex-shrink: 0;
 	min-width: 120rpx;
+	margin-top: 2px;
 }
 
 .tag-content {

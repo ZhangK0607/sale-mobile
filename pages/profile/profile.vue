@@ -24,10 +24,13 @@
         
         <u-cell 
           title="退出登录" 
-          icon="logout"
           :is-link="true"
           @click="handleLogout"
-        ></u-cell>
+        >
+          <template #icon>
+            <u-icon name="minus-circle" size="18" color="#909399"></u-icon>
+          </template>
+        </u-cell>
 
       </u-cell-group>
     </view>

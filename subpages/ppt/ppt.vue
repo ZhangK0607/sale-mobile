@@ -1,13 +1,13 @@
 <template>
 	<view class="ppt-page">
 		<!-- 顶部栏 -->
-		<view class="navbar">
+		<!-- <view class="navbar">
 			<view class="nav-left" @click="goBack">
 				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
 			</view>
 			<view class="nav-title">PPT</view>
 			<view class="nav-right"></view>
-		</view>
+		</view> -->
 
 		<scroll-view scroll-y class="content">
 			<view class="ppt-container">
@@ -343,7 +343,7 @@ export default {
 }
 .nav-left, .nav-right { width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; }
 .nav-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; color: #303133; }
-.content { padding-top: 88rpx; height: calc(100vh - 88rpx); }
+.content { height: calc(100vh - 88rpx); }
 .ppt-container { padding: 16rpx; padding-bottom: 55px;}
 .loading, .empty { text-align: center; color: #909399; padding: 32rpx 0; }
 .slides { display: flex; flex-direction: column; gap: 16rpx; }

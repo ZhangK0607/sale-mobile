@@ -1,7 +1,7 @@
 <template>
 	<view class="scheme-page">
 		<!-- 自定义导航栏 -->
-		<view class="navbar">
+		<!-- <view class="navbar">
 			<view class="nav-left" @click="goBack">
 				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
 			</view>
@@ -9,7 +9,7 @@
 			<view class="nav-right">
 				<u-icon name="more-dot-fill" color="#333" size="20"></u-icon>
 			</view>
-		</view>
+		</view> -->
 
 		<scroll-view scroll-y class="content">
 			<!-- 产品列表 -->
@@ -413,7 +413,6 @@ watch: {},
 
 /* 内容区域 */
 .content {
-	padding-top: 88rpx;
 	height: calc(100vh - 88rpx - 200rpx);
 }
 

@@ -28,6 +28,7 @@
 					placeholder="请描述您的需求，描述越详细，AI推荐越精准。可提及品牌、行业类型、数据条件等具体信息，获得更贴近场景的智能推荐产品" 
 					count 
 					height="100" 
+					cursor-color="#007aff"
 					:maxlength="300"
 					:disabled="isRecording">
 				</u-textarea>
@@ -116,6 +117,7 @@
 								v-model="productCount" 
 								placeholder="请输入产品数量" 
 								type="number"
+								cursor-color="#007aff"
 								clearable>
 								<template #suffix>
 									<text class="budget-unit-inline">条</text>

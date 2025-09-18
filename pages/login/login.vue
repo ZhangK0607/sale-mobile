@@ -26,7 +26,8 @@
           <u-input 
             v-model="formData.tenantName" 
             placeholder="请输入企业唯一ID"
-            :clear-button="true"
+            clearable
+            cursor-color="#007aff"
           ></u-input>
         </u-form-item>
         
@@ -35,7 +36,8 @@
           <u-input 
             v-model="formData.username" 
             placeholder="请输入用户名"
-            :clear-button="true"
+            clearable
+            cursor-color="#007aff"
           ></u-input>
         </u-form-item>
         
@@ -43,10 +45,21 @@
         <u-form-item label="密码" prop="password" class="form-item">
           <u-input 
             v-model="formData.password" 
-            type="password"
+            type="text"
+            :password="!showPassword"
             placeholder="请输入密码"
-            :clear-button="true"
-          ></u-input>
+            cursor-color="#007aff"
+            :passwordVisibilityToggle="false"
+          >
+            <template #suffix>
+              <u-icon
+                :name="showPassword ? 'eye-off' : 'eye-fill'"
+                size="18"
+                color="#909399"
+                @click="showPassword = !showPassword"
+              ></u-icon>
+            </template>
+          </u-input>
         </u-form-item>
       </u-form>
       
@@ -89,6 +102,7 @@ export default {
         username: '',
         password: ''
       },
+      showPassword: false,
       rememberMe: false,
       checkboxValue: [],
       loading: false,
@@ -308,6 +322,11 @@ export default {
 // 修复登录按钮样式优先级问题
 .login-btn {
   margin-top: 20rpx;
+}
+
+/* 强制 u-input 使用实体 1px 边框 */
+:deep(.u-input) {
+  border-width: 1px !important;
 }
 
 </style>
