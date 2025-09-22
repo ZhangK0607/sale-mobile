@@ -214,8 +214,7 @@ export default {
                 if (!arrayBuffer) throw new Error('未获取到文件数据')
 
                 // 保存到本地（各端处理）
-                const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
-                if (isH5) {
+                // #ifdef H5
                     const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
                     const url = window.URL.createObjectURL(blob)
                     const a = document.createElement('a')
@@ -225,20 +224,35 @@ export default {
                     a.click()
                     document.body.removeChild(a)
                     window.URL.revokeObjectURL(url)
-                } else if (typeof plus !== 'undefined' && plus?.io) {
-                    // App 端简单存储到私有目录
-                    const fileName = `报价单_${this.quotationData.orderNo}.pdf`
-                    plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
-                        fs.root.getFile(fileName, { create: true }, (entry) => {
-                            entry.createWriter((writer) => {
-                                writer.write(arrayBuffer)
-                                uni.showToast({ title: '已保存到本地', icon: 'success' })
-                            })
-                        })
+                // #endif
+
+                // #ifdef MP-WEIXIN
+                try {
+                    const filePath = `${wx.env.USER_DATA_PATH}/报价单_${this.quotationData.orderNo}.pdf`
+                    const fs = wx.getFileSystemManager()
+                    fs.writeFileSync(filePath, arrayBuffer)
+                    uni.openDocument({
+                        filePath,
+                        fileType: 'pdf',
+                        showMenu: true,
+                        success: () => {},
+                        fail: () => {
+                            uni.showToast({ title: '打开文档失败', icon: 'none' })
+                        }
                     })
-                } else {
-                    uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
+                } catch (err) {
+                    uni.showToast({ title: '保存文件失败', icon: 'none' })
                 }
+                // #endif
+
+                // 其他未适配平台统一提示
+                // #ifndef H5
+                // #ifndef MP-WEIXIN
+                // #ifndef APP-PLUS
+                uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
+                // #endif
+                // #endif
+                // #endif
             } catch (e) {
                 uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
             } finally {

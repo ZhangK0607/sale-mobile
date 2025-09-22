@@ -91,9 +91,8 @@ export default {
 				const arrayBuffer = res?.data || res
 				if (!arrayBuffer) throw new Error('未获取到文件数据')
 
-				const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
-				if (isH5) {
-					const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+                // #ifdef H5
+                    const blob = new Blob([arrayBuffer])
 					const url = window.URL.createObjectURL(blob)
 					const a = document.createElement('a')
 					a.href = url
@@ -102,7 +101,28 @@ export default {
 					a.click()
 					document.body.removeChild(a)
 					window.URL.revokeObjectURL(url)
-				} else if (typeof plus !== 'undefined' && plus?.io) {
+                // #endif
+
+                // #ifdef MP-WEIXIN
+                try {
+                    const filePath = `${wx.env.USER_DATA_PATH}/产品方案演示_${Date.now()}.pptx`
+                    const fs = wx.getFileSystemManager()
+                    fs.writeFileSync(filePath, arrayBuffer)
+                    uni.openDocument({
+                        filePath,
+                        fileType: 'pptx',
+                        showMenu: true,
+                        success: () => {},
+                        fail: () => {
+                            uni.showToast({ title: '打开PPT失败', icon: 'none' })
+                        }
+                    })
+                } catch (err) {
+                    uni.showToast({ title: '保存文件失败', icon: 'none' })
+                }
+                // #endif
+
+                // #ifdef APP-PLUS
 					const fileName = `产品方案演示_${Date.now()}.pptx`
 					plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
 						fs.root.getFile(fileName, { create: true }, (entry) => {
@@ -112,9 +132,7 @@ export default {
 							})
 						})
 					})
-				} else {
-					uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
-				}
+                // #endif
 			} catch (e) {
 				uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
 			} finally {

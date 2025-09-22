@@ -4,7 +4,6 @@
 
 // 配置
 const BASE_URL = 'https://demo.jdyos.com/admin-api' // 修改为你的API地址
-const TIMEOUT = 10000
 
 // 防止重复跳转登录页
 let isNavigatingToLogin = false
@@ -191,7 +190,6 @@ function http(method = 'GET', url = '', data = {}, options = {}) {
       url: BASE_URL + url,
       method: method.toUpperCase(),
       data,
-      timeout: TIMEOUT,
       responseType: options.responseType || undefined,
       header: {
         'Content-Type': 'application/json',

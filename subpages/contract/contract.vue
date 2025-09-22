@@ -122,30 +122,48 @@ export default {
 				const arrayBuffer = res?.data || res
 				if (!arrayBuffer) throw new Error('未获取到文件数据')
 
-				const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
-				if (isH5) {
-					const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-					const url = window.URL.createObjectURL(blob)
-					const a = document.createElement('a')
-					a.href = url
-					a.download = `合同_${this.contract.contractNo || Date.now()}.docx`
-					document.body.appendChild(a)
-					a.click()
-					document.body.removeChild(a)
-					window.URL.revokeObjectURL(url)
-				} else if (typeof plus !== 'undefined' && plus?.io) {
-					const fileName = `合同_${this.contract.contractNo || Date.now()}.docx`
-					plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
-						fs.root.getFile(fileName, { create: true }, (entry) => {
-							entry.createWriter((writer) => {
-								writer.write(arrayBuffer)
-								uni.showToast({ title: '已保存到本地', icon: 'success' })
-							})
+				// #ifdef H5
+				const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+				const url = window.URL.createObjectURL(blob)
+				const a = document.createElement('a')
+				a.href = url
+				a.download = `合同_${this.contract.contractNo || Date.now()}.docx`
+				document.body.appendChild(a)
+				a.click()
+				document.body.removeChild(a)
+				window.URL.revokeObjectURL(url)
+				// #endif
+
+				// #ifdef MP-WEIXIN
+				try {
+					const filePath = `${wx.env.USER_DATA_PATH}/合同_${this.contract.contractNo || Date.now()}.docx`
+					const fs = wx.getFileSystemManager()
+					fs.writeFileSync(filePath, arrayBuffer)
+					uni.openDocument({
+						filePath,
+						fileType: 'docx',
+						showMenu: true,
+						success: () => {},
+						fail: () => {
+							uni.showToast({ title: '打开合同失败', icon: 'none' })
+						}
+					})
+				} catch (err) {
+					uni.showToast({ title: '保存文件失败', icon: 'none' })
+				}
+				// #endif
+
+				// #ifdef APP-PLUS
+				const fileName = `合同_${this.contract.contractNo || Date.now()}.docx`
+				plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
+					fs.root.getFile(fileName, { create: true }, (entry) => {
+						entry.createWriter((writer) => {
+							writer.write(arrayBuffer)
+							uni.showToast({ title: '已保存到本地', icon: 'success' })
 						})
 					})
-				} else {
-					uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
-				}
+				})
+				// #endif
 			} catch (e) {
 				uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
 			} finally {
