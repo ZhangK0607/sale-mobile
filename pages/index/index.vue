@@ -26,7 +26,6 @@
 					v-if="!useNativeVoiceInput"
 					v-model="description" 
 					placeholder="请描述您的需求，描述越详细，AI推荐越精准。可提及品牌、行业类型、数据条件等具体信息，获得更贴近场景的智能推荐产品" 
-					count 
 					height="100" 
 					cursor-color="#007aff"
 					:maxlength="300"
@@ -34,23 +33,28 @@
 				</u-textarea>
 				
 				<view class="mic" @click="toggleVoiceInput">
+					<view class="voice-animation" v-if="isRecording">
+				    	<view class="voice-wave"></view>
+				    	<view class="voice-wave"></view>
+				    	<view class="voice-wave"></view>
+				    </view>
 					<u-icon 
-						:name="isRecording ? 'mic-fill' : 'mic'" 
-						:color="isRecording ? '#d9001bc8' : '#909399'" 
+						name="mic" 
+						:color="isRecording ? '#07c160' : '#909399'" 
 						size="22">
 					</u-icon>
 				</view>
 			</view>
 			<!-- 语音输入状态提示 -->
-			<view v-if="isRecording" class="voice-status">
+			<!-- <view v-if="isRecording" class="voice-status">
 				<view class="voice-animation">
 					<view class="voice-wave"></view>
 					<view class="voice-wave"></view>
 					<view class="voice-wave"></view>
 				</view>
-				<text class="voice-text">正在录音中，请说话...</text>
-				<u-button type="error" size="mini" @click="stopRecording">停止录音</u-button>
-			</view>
+				<text class="voice-text">{{ interimText || '正在录音中，请说话...' }}</text>
+				<u-button type="error" size="mini" @click="stopRecording" style="width: 20px;">停止录音</u-button>
+			</view> -->
 			<view class="filters">
 				<u-dropdown ref="dropdown">
 					<!-- <u-dropdown-item title="产品预算" >
@@ -232,10 +236,11 @@
 				},
 				// 语音输入相关
 				isRecording: false,
-				recorderManager: null,
-				tempFilePath: '',
 				voiceInputSupported: false,
-				useNativeVoiceInput: false
+				useNativeVoiceInput: false,
+				// 微信同声传译插件
+				wxAsrManager: null,
+				interimText: ''
 			}
 		},
 		onLoad() {
@@ -408,10 +413,47 @@
 				}
 				// #endif
 				
-				// #ifdef APP-PLUS || MP-WEIXIN
-				// 初始化录音管理器
-				this.recorderManager = uni.getRecorderManager()
-				this.voiceInputSupported = true
+				// #ifdef MP-WEIXIN
+				// 初始化微信同声传译插件（实时语音转文字）
+				try {
+					const plugin = requirePlugin('WechatSI')
+					this.wxAsrManager = plugin.getRecordRecognitionManager()
+					this.wxAsrManager.onRecognize = (res) => {
+						console.log('语音识别结果:', res)
+						this.isRecording = true
+						if(res.result) {
+							this.description = this.description + res.result
+						}
+					}
+					this.wxAsrManager.onStop = (res) => {
+						console.log('语音识别停止:', res)
+						this.isRecording = false
+						const finalText = (res && res.result) ? res.result : ''
+						if (finalText) {
+							this.description = this.description + finalText
+							uni.showToast({ title: '语音识别成功', icon: 'success' })
+						} else {
+							uni.showToast({ title: '未识别到语音', icon: 'none' })
+						}
+						this.interimText = ''
+					}
+					this.wxAsrManager.onError = (err) => {
+						this.isRecording = false
+						this.interimText = ''
+						const tips = {
+                          '-30003': '说话时间间隔太短，无法识别语音',
+                          '-30004': '没有听清，请再说一次~',
+                          '-30011': '上个录音正在识别中，请稍后尝试',
+                        };
+						const retcode = res?.retcode.toString();
+						console.error('语音识别错误:', err)
+						uni.showToast({ title: tips[`${retcode}`] || '语音识别失败', icon: 'none' })
+					}
+					this.voiceInputSupported = true
+				} catch (e) {
+					console.error('WechatSI 插件初始化失败:', e)
+					this.voiceInputSupported = false
+				}
 				// #endif
 			},
 			// 切换语音输入
@@ -431,9 +473,9 @@
 					uni.showToast({ title: '当前浏览器不支持语音输入', icon: 'none' })
 				}
 				// #endif
-				
-				// #ifdef APP-PLUS || MP-WEIXIN
-				this.startUniRecording()
+
+				// #ifdef MP-WEIXIN
+				this.startWxAsr()
 				// #endif
 			},
 			// H5 语音识别
@@ -471,87 +513,39 @@
 				
 				recognition.start()
 			},
-			// uni-app 录音
-			startUniRecording() {
-				if (!this.recorderManager) {
-					uni.showToast({ title: '录音功能不可用', icon: 'none' })
-					return
-				}
-				
-				this.recorderManager.onStart(() => {
-					this.isRecording = true
-					uni.showToast({ title: '开始录音', icon: 'none' })
-				})
-				
-				this.recorderManager.onStop((res) => {
-					this.isRecording = false
-					this.tempFilePath = res.tempFilePath
-					this.convertVoiceToText(res.tempFilePath)
-				})
-				
-				this.recorderManager.onError((err) => {
-					this.isRecording = false
-					console.error('录音错误:', err)
-					uni.showToast({ title: '录音失败', icon: 'none' })
-				})
-				
-				// 开始录音
-				this.recorderManager.start({
-					duration: 60000, // 最长录音时间
-					sampleRate: 16000,
-					numberOfChannels: 1,
-					encodeBitRate: 96000,
-					format: 'mp3'
-				})
-			},
 			// 停止录音
 			stopRecording() {
 				// #ifdef H5
 				// H5 模式下，语音识别会自动停止
 				this.isRecording = false
 				// #endif
-				
-				// #ifdef APP-PLUS || MP-WEIXIN
-				if (this.recorderManager && this.isRecording) {
-					this.recorderManager.stop()
-				}
+				// #ifdef MP-WEIXIN
+				this.stopWxAsr()
 				// #endif
 			},
-			// 将语音转换为文字（需要调用语音识别服务）
-			convertVoiceToText(filePath) {
-				// 这里需要调用语音识别服务
-				// 可以使用百度、腾讯、阿里等语音识别API
-				// 或者使用uni-app的语音识别插件
-				
-				uni.showLoading({ title: '识别中...', mask: true })
-				
-				// 示例：使用uni.uploadFile上传音频文件到服务器进行识别
-				// 实际项目中需要根据具体的语音识别服务API进行调整
-				uni.uploadFile({
-					url: 'https://your-api.com/speech-to-text', // 替换为实际的语音识别API
-					filePath: filePath,
-					name: 'audio',
-					success: (res) => {
-						try {
-							const data = JSON.parse(res.data)
-							if (data.success) {
-								this.description = this.description + data.text
-								uni.showToast({ title: '语音识别成功', icon: 'success' })
-							} else {
-								uni.showToast({ title: '语音识别失败', icon: 'none' })
-							}
-						} catch (e) {
-							uni.showToast({ title: '语音识别失败', icon: 'none' })
-						}
-					},
-					fail: (err) => {
-						console.error('上传失败:', err)
-						uni.showToast({ title: '语音识别失败', icon: 'none' })
-					},
-					complete: () => {
-						uni.hideLoading()
-					}
-				})
+			// 微信同声传译：开始/停止
+			startWxAsr() {
+				if (!this.wxAsrManager) {
+					uni.showToast({ title: '语音识别不可用', icon: 'none' })
+					return
+				}
+				this.interimText = ''
+				try {
+					this.wxAsrManager.start({
+						lang: 'zh_CN',
+						duration: 60000
+					})
+					this.isRecording = true
+					uni.showToast({ title: '开始录音', icon: 'none' })
+				} catch (e) {
+					console.error('启动语音识别失败:', e)
+					uni.showToast({ title: '语音识别启动失败', icon: 'none' })
+				}
+			},
+			stopWxAsr() {
+				if (this.wxAsrManager) {
+					try { this.wxAsrManager.stop() } catch (e) {}
+				}
 			},
 			// 原生语音输入事件处理
 			onVoiceInputChange(event) {
@@ -600,9 +594,10 @@
 	.mic { 
 		position: absolute; 
 		right: 24rpx; 
-		top: 24rpx; 
+		bottom: 24rpx; 
 		cursor: pointer;
 		transition: all 0.3s;
+		display: flex;
 	}
 	.mic:hover { transform: scale(1.1); }
 	
@@ -627,7 +622,7 @@
 	.voice-wave {
 		width: 4rpx;
 		height: 20rpx;
-		background: #d9001bc8;
+		background: #07c160;
 		border-radius: 2rpx;
 		animation: voiceWave 1s infinite ease-in-out;
 	}
@@ -648,6 +643,7 @@
 	.voice-text {
 		font-size: 24rpx;
 		color: #606266;
+		flex: 1;
 	}
 	
 	/* 原生语音输入样式 */
