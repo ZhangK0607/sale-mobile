@@ -249,6 +249,12 @@
 			this.fetchAllLabels()
 			this.initVoiceInput()
 		},
+		onShow() {
+			// 仅在小程序端检查录音权限
+			// #ifdef MP-WEIXIN
+			this.ensureRecordPermission()
+			// #endif
+		},
 		methods: {
 			async recommend() {
 				// 验证描述和标签必须有一个有值
@@ -445,7 +451,7 @@
                           '-30004': '没有听清，请再说一次~',
                           '-30011': '上个录音正在识别中，请稍后尝试',
                         };
-						const retcode = res?.retcode.toString();
+						const retcode = (err && err.retcode != null) ? String(err.retcode) : '';
 						console.error('语音识别错误:', err)
 						uni.showToast({ title: tips[`${retcode}`] || '语音识别失败', icon: 'none' })
 					}
@@ -529,6 +535,16 @@
 					uni.showToast({ title: '语音识别不可用', icon: 'none' })
 					return
 				}
+				// #ifdef MP-WEIXIN
+				this.ensureRecordPermission().then((granted) => {
+					if (!granted) return
+					this._doStartWxAsr()
+				})
+				return
+				// #endif
+				this._doStartWxAsr()
+			},
+			_doStartWxAsr() {
 				this.interimText = ''
 				try {
 					this.wxAsrManager.start({
@@ -546,6 +562,44 @@
 				if (this.wxAsrManager) {
 					try { this.wxAsrManager.stop() } catch (e) {}
 				}
+			},
+			// 录音权限校验与引导
+			ensureRecordPermission() {
+				return new Promise((resolve) => {
+					uni.getSetting({
+						success: (res) => {
+							const authed = !!res.authSetting['scope.record']
+							if (authed) { resolve(true); return }
+							uni.authorize({
+								scope: 'scope.record',
+								success: () => resolve(true),
+								fail: () => {
+									this.promptOpenSetting('请授权录音，用于语音识别').then(ok => resolve(!!ok)).catch(() => resolve(false))
+								}
+							})
+						},
+						fail: () => resolve(false)
+					})
+				})
+			},
+			promptOpenSetting(tip) {
+				return new Promise((resolve, reject) => {
+					uni.showModal({
+						title: '提示',
+						content: tip,
+						confirmText: '去授权',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								uni.openSetting({
+									success: (st) => resolve(st.authSetting && st.authSetting['scope.record'])
+								})
+							} else {
+								reject('用户取消授权')
+							}
+						}
+					})
+				})
 			},
 			// 原生语音输入事件处理
 			onVoiceInputChange(event) {
