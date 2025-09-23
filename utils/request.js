@@ -2,8 +2,10 @@
  * uni-app 超简洁请求封装
  */
 
+import config from '@/config/index.js'
+
 // 配置
-const BASE_URL = 'https://demo.jdyos.com/admin-api' // 修改为你的API地址
+const BASE_URL = config.FULL_API_URL
 
 // 防止重复跳转登录页
 let isNavigatingToLogin = false
