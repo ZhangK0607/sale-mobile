@@ -1,19 +1,17 @@
 <template>
   <view class="login-container">
     <!-- 检查登录状态loading -->
-    <view v-if="isCheckingLogin" class="checking-loading">
+    <!-- <view v-if="isCheckingLogin" class="checking-loading">
       <u-loading-icon mode="spinner" size="40" color="#007aff"></u-loading-icon>
       <text class="checking-text">检查登录状态中...</text>
-    </view>
+    </view> -->
     
-    <!-- 登录表单 -->
-    <view v-else>
       <!-- 顶部标题和图标 -->
       <view class="logo">
         <u-image 
           :src="'/static/logo.png'" 
-          width="300rpx" 
-          height="300rpx" 
+          width="200rpx" 
+          height="200rpx" 
           shape="circle"
           :show-loading="false"
           :show-error="false"
@@ -94,7 +92,6 @@
       >
         登录
       </u-button>
-      </view>
     </view>
   </view>
 </template>
@@ -330,6 +327,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 20rpx;
 }
 
 .form-container {

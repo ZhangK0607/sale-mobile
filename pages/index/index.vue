@@ -641,7 +641,7 @@
 		position: relative;
 		z-index: 1;
 		padding: 0 24rpx;
-		/* height: 100vh; */ /*设置固定高度 */
+		height: calc(100vh - 94px); /*设置固定高度 */
 		overflow: hidden; /* 禁用页面滚动 */
 	}
 	.card { 
