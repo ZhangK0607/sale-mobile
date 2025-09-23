@@ -306,6 +306,16 @@
 					if (response.code === 0) {
 						// 存储推荐产品数据
 						this.recommendProducts = response.data.products || []
+						
+						// 检查是否有推荐结果
+						if (!this.recommendProducts || this.recommendProducts.length === 0) {
+							// 显示后端返回的提示信息
+							uni.showToast({
+								title: response.msg || '暂无推荐产品',
+								icon: 'none',
+								duration: 3000
+							})
+						}
 					} else {
 						uni.showToast({ 
 							title: response.msg || '推荐失败', 
@@ -641,7 +651,12 @@
 		position: relative;
 		z-index: 1;
 		padding: 0 24rpx;
-		height: calc(100vh - 94px); /*设置固定高度 */
+		/* #ifdef H5 */
+		height: calc(100vh - 94px); /* H5环境下减去导航栏高度 */
+		/* #endif */
+		/* #ifdef MP-WEIXIN */
+		height: 100vh; /* 小程序环境下使用100% */
+		/* #endif */
 		overflow: hidden; /* 禁用页面滚动 */
 	}
 	.card { 
@@ -819,7 +834,12 @@
 	
 	/* 产品列表滚动容器 */
 	.product-list-scroll {
-		max-height: 600rpx; /* 设置最大高度，超过时可以滚动 */
+		/* #ifdef H5 */
+		max-height: calc(100vh - 310px - 50px); /* H5环境下减去导航栏高度 */
+		/* #endif */
+		/* #ifdef MP-WEIXIN */
+		max-height: calc(100vh - 262px); /* 小程序环境下使用100% */
+		/* #endif */
 		width: 100%;
 	}
 	
