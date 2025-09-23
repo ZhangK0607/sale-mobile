@@ -1,19 +1,27 @@
 <template>
   <view class="login-container">
-    <!-- 顶部标题和图标 -->
-    <view class="logo">
-      <u-image 
-        :src="'/static/logo.png'" 
-        width="300rpx" 
-        height="300rpx" 
-        shape="circle"
-        :show-loading="false"
-        :show-error="false"
-      ></u-image>
+    <!-- 检查登录状态loading -->
+    <view v-if="isCheckingLogin" class="checking-loading">
+      <u-loading-icon mode="spinner" size="40" color="#007aff"></u-loading-icon>
+      <text class="checking-text">检查登录状态中...</text>
     </view>
     
     <!-- 登录表单 -->
-    <view class="form-container">
+    <view v-else>
+      <!-- 顶部标题和图标 -->
+      <view class="logo">
+        <u-image 
+          :src="'/static/logo.png'" 
+          width="300rpx" 
+          height="300rpx" 
+          shape="circle"
+          :show-loading="false"
+          :show-error="false"
+        ></u-image>
+      </view>
+      
+      <!-- 登录表单 -->
+      <view class="form-container">
       <u-form 
         :model="formData" 
         :rules="rules" 
@@ -86,6 +94,7 @@
       >
         登录
       </u-button>
+      </view>
     </view>
   </view>
 </template>
@@ -106,6 +115,7 @@ export default {
       rememberMe: false,
       checkboxValue: [],
       loading: false,
+      isCheckingLogin: true, // 检查登录状态中
       rules: {
         tenantName: [
           {
@@ -138,11 +148,37 @@ export default {
   },
   
   onLoad() {
+    // 检查是否已经有accessToken，如果有则直接跳转到首页
+    this.checkLoginStatus()
     // 检查是否记住了登录信息
     this.loadRememberedInfo()
   },
   
   methods: {
+    // 检查登录状态
+    checkLoginStatus() {
+      try {
+        const accessToken = uni.getStorageSync('accessToken')
+        const userInfo = uni.getStorageSync('userInfo')
+        
+        if (accessToken && userInfo) {
+          console.log('检测到已登录状态，自动跳转到首页')
+          // 延迟跳转，避免页面闪烁
+          setTimeout(() => {
+            uni.switchTab({
+              url: '/pages/index/index'
+            })
+          }, 500)
+        } else {
+          // 没有登录信息，结束检查状态
+          this.isCheckingLogin = false
+        }
+      } catch (error) {
+        console.error('检查登录状态失败:', error)
+        this.isCheckingLogin = false
+      }
+    },
+    
     // 记住我选择变化
     onRememberChange(value) {
       this.rememberMe = value.includes('remember')
@@ -327,6 +363,22 @@ export default {
 /* 强制 u-input 使用实体 1px 边框 */
 :deep(.u-input) {
   border-width: 1px !important;
+}
+
+/* 检查登录状态loading样式 */
+.checking-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 24rpx;
+}
+
+.checking-text {
+  font-size: 28rpx;
+  color: #666666;
+  text-align: center;
 }
 
 </style>

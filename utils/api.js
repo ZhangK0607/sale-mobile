@@ -53,7 +53,7 @@ export const product = {
   getAllLabels: () => http('GET', '/sale/product/getAllLabels', {}),
   
   // AI智能推荐产品接口
-  fetchAIRecommendProducts: (data) => http('POST', '/sale/recommend/recommend', data),
+  fetchAIRecommendProducts: (data, options = {}) => http('POST', '/sale/recommend/recommend', data, options),
   
   // 获取产品详情
   getProductDetail: (id) => http('GET', '/sale/product/detail', { id }),

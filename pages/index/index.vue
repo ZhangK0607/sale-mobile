@@ -26,9 +26,9 @@
 					v-if="!useNativeVoiceInput"
 					v-model="description" 
 					placeholder="请描述您的需求，描述越详细，AI推荐越精准。可提及品牌、行业类型、数据条件等具体信息，获得更贴近场景的智能推荐产品" 
-					height="100" 
+					height="80" 
 					cursor-color="#007aff"
-					:maxlength="300"
+					:maxlength="800"
 					:disabled="isRecording">
 				</u-textarea>
 				
@@ -180,28 +180,38 @@
 		</view>
 		
 		<!-- 推荐产品组合展示区域 -->
-		<view v-if="recommendProducts.length > 0" class="recommend-section">
+		<view v-if="recommendProducts.length > 0 || isRecommendLoading" class="recommend-section">
 			<view class="recommend-title">推荐产品组合</view>
-			<view class="product-list">
-				<view 
-					v-for="(product, index) in recommendProducts" 
-					:key="index" 
-					class="product-card"
-					@click="goToProductDetail(product)">
-					<view class="product-info">
-						<image 
-							:src="product.logo || '/static/defaultPro.png'" 
-							class="product-logo"
-							mode="aspectFit">
-						</image>
-						<view class="product-details">
-							<view class="product-name">{{ product.name}}</view>
-							<view class="product-desc">{{ product.description || '' }}</view>
-							<view class="product-price">￥{{ product.price || '' }}/{{ periodUnit(product.period) }}</view>
+			
+			<!-- 加载状态 -->
+			<view v-if="isRecommendLoading" class="loading-container">
+				<u-loading-icon mode="spinner" size="28" color="#3c9cff"></u-loading-icon>
+				<text class="loading-text">{{ loadingText }}</text>
+			</view>
+			
+			<!-- 产品列表 -->
+			<scroll-view v-else scroll-y class="product-list-scroll">
+				<view class="product-list">
+					<view 
+						v-for="(product, index) in recommendProducts" 
+						:key="index" 
+						class="product-card"
+						@click="goToProductDetail(product)">
+						<view class="product-info">
+							<image 
+								:src="product.logo || '/static/defaultPro.png'" 
+								class="product-logo"
+								mode="aspectFit">
+							</image>
+							<view class="product-details">
+								<view class="product-name">{{ product.name}}</view>
+								<view class="product-desc">{{ product.description || '' }}</view>
+								<view class="product-price">￥{{ product.price || '' }}/{{ periodUnit(product.period) }}</view>
+							</view>
 						</view>
 					</view>
 				</view>
-			</view>
+			</scroll-view>
 		</view>
 
 		<u-float-button 
@@ -222,7 +232,7 @@
 	export default {
 		data() {
 			return {
-				description: '思政助手',
+				description: '',
 				// budget: '', // 实际的预算值
 				productCount: '',
 				typeLabels: [],
@@ -230,6 +240,8 @@
 				industryOptions: [],
 				tagOptions: [],
 				recommendProducts: [], // 推荐产品列表
+				isRecommendLoading: false, // 推荐加载状态
+				loadingText: '向量库搜索中...', // 加载文字
 				fabPattern: {
 					buttonColor: '#ffffff',
 					iconColor: '#606266'
@@ -278,26 +290,22 @@
 				console.log('提交数据：', requestData)
 
 				try {
-					uni.showLoading({ title: 'AI推荐中...', mask: true })
-					const response = await api.product.fetchAIRecommendProducts(requestData)
+					// 开始加载状态
+					this.isRecommendLoading = true
+					this.loadingText = '向量库搜索中...'
+					
+					// 延迟切换文字，模拟两个阶段
+					setTimeout(() => {
+						if (this.isRecommendLoading) {
+							this.loadingText = '智能体推荐中...'
+						}
+					}, 1000) // 2秒后切换文字
+					
+					const response = await api.product.fetchAIRecommendProducts(requestData, { disableLoading: true })
 					
 					if (response.code === 0) {
 						// 存储推荐产品数据
 						this.recommendProducts = response.data.products || []
-						
-						uni.showToast({ 
-							title: response.msg || `推荐成功`, 
-							icon: 'success',
-							duration: 2000
-						})
-						
-						// 滚动到推荐结果区域
-						setTimeout(() => {
-							uni.pageScrollTo({
-								selector: '.recommend-section',
-								duration: 500
-							})
-						}, 500)
 					} else {
 						uni.showToast({ 
 							title: response.msg || '推荐失败', 
@@ -313,7 +321,9 @@
 						duration: 2000
 					})
 				} finally {
-					uni.hideLoading()
+					// 结束加载状态
+					this.isRecommendLoading = false
+					this.loadingText = '向量库搜索中...' // 重置为初始文字
 				}
 			},
 			onFab() {
@@ -631,6 +641,8 @@
 		position: relative;
 		z-index: 1;
 		padding: 0 24rpx;
+		/* height: 100vh; */ /*设置固定高度 */
+		overflow: hidden; /* 禁用页面滚动 */
 	}
 	.card { 
 		background: #ffffff; 
@@ -647,8 +659,8 @@
 	.input-container { position: relative; }
 	.mic { 
 		position: absolute; 
-		right: 24rpx; 
-		bottom: 24rpx; 
+		right: 4rpx; 
+		bottom: 10rpx; 
 		cursor: pointer;
 		transition: all 0.3s;
 		display: flex;
@@ -719,14 +731,14 @@
 		border-color: #d9001bc8;
 	}
 	.filters { 
-		margin-top: 20rpx; 
+		margin-top: 12rpx; 
 		/* 关键修改：允许下拉内容溢出容器 */
 		overflow: visible !important;
 		/* 设置高层级确保下拉菜单显示在最上层 */
 		position: relative;
 		z-index: 9999;
 	}
-	.submit { margin-top: 24rpx; }
+	.submit { margin-top: 12rpx; }
 	
 	/* 预算输入弹窗样式 */
 	.budget-input-container {
@@ -793,47 +805,45 @@
 		gap: 20rpx;
 		margin-top: 20rpx;
 	}
-</style>
-
-<!-- 添加全局样式确保 dropdown 组件正常显示 -->
-<style>
-    .u-input{
-    	background: #fff;
-    }
-	/* 全局样式，确保uview dropdown组件的遮罩和内容能正常显示 */
-	.u-dropdown__popup,
-	.u-dropdown__mask,
-	.u-dropdown__content {
-		z-index: 99999 !important;
-	}
-	.u-dropdown__content {
-		width: calc(100% + 48rpx)!important;
-		left: -24rpx!important;
-	}
-	
-	/* 确保页面容器不会裁剪dropdown内容 */
-	page {
-		overflow: visible !important;
-	}
-	
-	/* 如果dropdown内容仍被裁剪，可以尝试这个 */
-	.u-dropdown {
-		position: static !important;
-	}
-	
 	/* 推荐产品展示样式 */
 	
 	.recommend-title {
 		font-size: 28rpx;
 		color: #303133;
-		margin-bottom: 20rpx;
+		margin-bottom: 10rpx;
 		text-align: left;
+	}
+	.recommend-section{
+		padding-bottom: 12rpx;
+	}
+	
+	/* 产品列表滚动容器 */
+	.product-list-scroll {
+		max-height: 600rpx; /* 设置最大高度，超过时可以滚动 */
+		width: 100%;
+	}
+	
+	/* 加载状态样式 */
+	.loading-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 80rpx 24rpx;
+		gap: 24rpx;
+	}
+	
+	.loading-text {
+		font-size: 28rpx;
+		color: #909399;
+		text-align: center;
 	}
 	
 	.product-list {
 		display: flex;
 		flex-direction: column;
 		gap: 24rpx;
+		padding: 10rpx 6rpx ;
 	}
 	
 	.product-card {
@@ -911,5 +921,32 @@
 		flex-wrap: wrap;
 		gap: 8px;
         row-gap: 16rpx;
+	}
+</style>
+
+<!-- 添加全局样式确保 dropdown 组件正常显示 -->
+<style>
+    .u-input{
+    	background: #fff;
+    }
+	/* 全局样式，确保uview dropdown组件的遮罩和内容能正常显示 */
+	.u-dropdown__popup,
+	.u-dropdown__mask,
+	.u-dropdown__content {
+		z-index: 99999 !important;
+	}
+	.u-dropdown__content {
+		width: calc(100% + 48rpx)!important;
+		left: -24rpx!important;
+	}
+	
+	/* 确保页面容器不会裁剪dropdown内容 */
+	page {
+		overflow: visible !important;
+	}
+	
+	/* 如果dropdown内容仍被裁剪，可以尝试这个 */
+	.u-dropdown {
+		position: static !important;
 	}
 </style>

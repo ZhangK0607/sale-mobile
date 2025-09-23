@@ -167,8 +167,10 @@ function handleResponse(res, options = {}) {
  * @param {Object} options 额外配置
  */
 function http(method = 'GET', url = '', data = {}, options = {}) {
-  // 显示loading
-  uni.showLoading({ title: '加载中...', mask: true })
+  // 显示loading（除非明确禁用）
+  if (!options.disableLoading) {
+    uni.showLoading({ title: '加载中...', mask: true })
+  }
   
   // 获取token和tenant-id
   const accessToken = uni.getStorageSync('accessToken')
@@ -198,7 +200,9 @@ function http(method = 'GET', url = '', data = {}, options = {}) {
         ...options.header
       },
       success: (res) => {
-        uni.hideLoading()
+        if (!options.disableLoading) {
+          uni.hideLoading()
+        }
         
         // 使用统一的响应处理函数
         handleResponse(res, options)
@@ -206,7 +210,9 @@ function http(method = 'GET', url = '', data = {}, options = {}) {
           .catch(reject)
       },
       fail: (err) => {
-        uni.hideLoading()
+        if (!options.disableLoading) {
+          uni.hideLoading()
+        }
         
         // 网络错误统一处理
         let message = '网络异常，请稍后再试'
