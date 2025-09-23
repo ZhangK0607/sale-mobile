@@ -154,33 +154,43 @@ import api from '@/utils/api.js'
 		    	{ value: 'year', label: '年' },
 		    	{ value: 'season', label: '季度' },
 		    	{ value: 'month', label: '月' }
-		    ]
+		    ],
+		    dataLoaded: false // 标记数据是否已加载
 		}
 	},
 	onLoad(options) {
-		// 获取传递的产品数据
-		if (options.productData) {
-			try {
-				this.productList = JSON.parse(decodeURIComponent(options.productData))
+		// 从本地存储获取产品数据
+		try {
+			const storedProducts = uni.getStorageSync('recommendProducts')
+			if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
 				// 为每个产品添加quantity字段，默认为1
-				this.productList = this.productList.map(product => ({
+				this.productList = storedProducts.map(product => ({
 					...product,
 					num: product.num || 1
 				}))
 				// 初始化选中状态数组，默认全部选中
 				this.selectedProducts = new Array(this.productList.length).fill(true)
-				console.log('接收到的产品数据:', this.productList)
-			} catch (e) {
-				console.error('解析产品数据失败:', e)
-				// 解析失败时保持空数组，显示空状态
+				console.log('从本地存储获取的产品数据:', this.productList)
+				
+				// 标记数据已读取，在页面卸载时清除
+				this.dataLoaded = true
+			} else {
+				// 没有数据时显示空状态
 				this.productList = []
 				this.selectedProducts = []
+				console.log('未找到产品数据，显示空状态')
 			}
-		} else {
-			// 没有传递数据时保持空数组，显示空状态
+		} catch (e) {
+			console.error('获取产品数据失败:', e)
+			// 获取失败时保持空数组，显示空状态
 			this.productList = []
 			this.selectedProducts = []
-			console.log('未接收到产品数据，显示空状态')
+		}
+	},
+	onUnload() {
+		// 页面卸载时清除存储的数据
+		if (this.dataLoaded) {
+			uni.removeStorageSync('recommendProducts')
 		}
 	},
 	computed: {
@@ -315,10 +325,11 @@ watch: {},
 				const response = await api.quotation.createQuotation(requestData)
 				
 				if (response.code === 0 && response.data) {
-					// 跳转到报价单页面
-					const quotationData = encodeURIComponent(JSON.stringify(response.data))
+					// 使用本地存储传递数据，避免URL参数长度限制
+					uni.setStorageSync('quotationData', response.data)
+					uni.setStorageSync('quotationPeriod', this.selectedPeriod)
 					uni.navigateTo({
-						url: `/subpages/quotation/quotation?quotationData=${quotationData}&period=${this.selectedPeriod}`
+						url: '/subpages/quotation/quotation'
 					})
 				} else {
 					uni.showToast({
@@ -356,8 +367,9 @@ watch: {},
                 }),
 				totalPrice: this.calculatedTotal
 			}
-			const payload = encodeURIComponent(JSON.stringify(requestData))
-			uni.navigateTo({ url: `/subpages/contract/contract?data=${payload}` })
+			// 使用本地存储传递数据，避免URL参数长度限制
+			uni.setStorageSync('contractData', requestData)
+			uni.navigateTo({ url: '/subpages/contract/contract' })
 		},
 		// 生成PPT
 		async generateProposal() {
@@ -366,8 +378,9 @@ watch: {},
 				uni.showToast({ title: '请选择至少一个产品', icon: 'none' })
 				return
 			}
-			const payload = encodeURIComponent(JSON.stringify(selectedProducts))
-			uni.navigateTo({ url: `/subpages/ppt/ppt?products=${payload}` })
+			// 使用本地存储传递数据，避免URL参数长度限制
+			uni.setStorageSync('pptProducts', selectedProducts)
+			uni.navigateTo({ url: '/subpages/ppt/ppt' })
 		}
 	}
 }

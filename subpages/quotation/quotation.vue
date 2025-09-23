@@ -122,22 +122,31 @@ export default {
         }
     },
     onLoad(options) {
-        // 获取传递的报价单数据
-        if (options.quotationData) {
-            try {
-                this.quotationData = JSON.parse(decodeURIComponent(options.quotationData))
-                console.log('接收到的报价单数据:', this.quotationData)
-            } catch (e) {
-                console.error('解析报价单数据失败:', e)
-                uni.showToast({
-                    title: '数据解析失败',
-                    icon: 'none'
-                })
+        // 从本地存储获取报价单数据
+        try {
+            const storedQuotationData = uni.getStorageSync('quotationData')
+            const storedPeriod = uni.getStorageSync('quotationPeriod')
+            
+            if (storedQuotationData) {
+                this.quotationData = storedQuotationData
+                console.log('从本地存储获取的报价单数据:', this.quotationData)
+                
+                // 清除存储的数据
+                uni.removeStorageSync('quotationData')
+            } else {
+                console.log('未找到报价单数据')
             }
-        }
-        // 获取周期参数
-        if (options.period) {
-            this.billingPeriod = options.period
+            
+            if (storedPeriod) {
+                this.billingPeriod = storedPeriod
+                uni.removeStorageSync('quotationPeriod')
+            }
+        } catch (e) {
+            console.error('获取报价单数据失败:', e)
+            uni.showToast({
+                title: '数据获取失败',
+                icon: 'none'
+            })
         }
     },
     methods: {

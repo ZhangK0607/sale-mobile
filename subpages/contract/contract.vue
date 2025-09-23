@@ -84,11 +84,23 @@ export default {
 	},
 	onLoad(options) {
 		try {
-			const payload = options.data
-			if (!payload) { this.loading = false; return }
-			const data = JSON.parse(decodeURIComponent(payload))
-			this.fetchContract(data)
-		} catch (e) { this.loading = false }
+			// 从本地存储获取合同数据
+			const storedData = uni.getStorageSync('contractData')
+			if (!storedData) { 
+				this.loading = false
+				console.log('未找到合同数据')
+				return 
+			}
+			
+			console.log('从本地存储获取的合同数据:', storedData)
+			this.fetchContract(storedData)
+			
+			// 清除存储的数据
+			uni.removeStorageSync('contractData')
+		} catch (e) { 
+			this.loading = false
+			console.error('获取合同数据失败:', e)
+		}
 	},
 	methods: {
 		goBack() { uni.navigateBack() },

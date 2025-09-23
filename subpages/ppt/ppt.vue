@@ -61,18 +61,24 @@ export default {
 		}
 	},
 	onLoad(options) {
-		// 从参数拿到所选产品并请求生成PPT
+		// 从本地存储获取产品数据并请求生成PPT
 		try {
-			const productsParam = options.products
-			if (!productsParam) {
+			const storedProducts = uni.getStorageSync('pptProducts')
+			if (!storedProducts) {
 				this.loading = false
+				console.log('未找到PPT产品数据')
 				return
 			}
-			const products = JSON.parse(decodeURIComponent(productsParam))
-			this.currentProducts = products // 保存产品数据用于分享
-			this.generate(products)
+			
+			console.log('从本地存储获取的PPT产品数据:', storedProducts)
+			this.currentProducts = storedProducts // 保存产品数据用于分享
+			this.generate(storedProducts)
+			
+			// 清除存储的数据
+			uni.removeStorageSync('pptProducts')
 		} catch (e) {
 			this.loading = false
+			console.error('获取PPT产品数据失败:', e)
 		}
 	},
 	methods: {

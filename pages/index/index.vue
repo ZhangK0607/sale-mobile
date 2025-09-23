@@ -327,10 +327,10 @@
 					return
 				}
 				
-				// 将推荐产品数据传递到生成方案页面
-				const productData = encodeURIComponent(JSON.stringify(this.recommendProducts))
+				// 使用本地存储传递数据，避免URL参数长度限制
+				uni.setStorageSync('recommendProducts', this.recommendProducts)
 				uni.navigateTo({
-					url: `/subpages/scheme/scheme?productData=${productData}`
+					url: '/subpages/scheme/scheme'
 				})
 			},
 			confirmBudget() {
