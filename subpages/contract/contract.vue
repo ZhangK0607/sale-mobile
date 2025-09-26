@@ -125,12 +125,12 @@ export default {
 		// 下载合同word
 		async downloadContractPdf() {
 			try {
-				if (!this.contract?.contractNo || !this.contentHtml) {
+				if (!this.contract?.contractNo || !this.contract?.content) {
 					uni.showToast({ title: '合同数据未就绪', icon: 'none' })
 					return
 				}
 				uni.showLoading({ title: '下载中...', mask: true })
-				const res = await api.contract.downloadContract({ contractNo: this.contract.contractNo, content: this.contentHtml })
+				const res = await api.contract.downloadContract({ contractNo: this.contract.contractNo, content: this.contract.content })
 				const arrayBuffer = res?.data || res
 				if (!arrayBuffer) throw new Error('未获取到文件数据')
 
@@ -185,12 +185,12 @@ export default {
 		// 分享合同（返回链接或直接返回文件流）
 		async shareContract() {
 			try {
-				if (!this.contract?.contractNo || !this.contentHtml) {
+				if (!this.contract?.contractNo || !this.contract?.content) {
 					uni.showToast({ title: '合同数据未就绪', icon: 'none' })
 					return
 				}
 				uni.showLoading({ title: '生成分享链接...', mask: true })
-				const res = await api.contract.buildDownloadContract({ contractNo: this.contract.contractNo, content: this.contentHtml, isShare: true })
+				const res = await api.contract.buildDownloadContract({ contractNo: this.contract.contractNo, content: this.contract.content, isShare: true })
 				const data = res?.data
 				// 如果后端直接返回URL
 				if (typeof data === 'string') {
