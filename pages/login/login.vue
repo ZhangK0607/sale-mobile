@@ -99,6 +99,7 @@
 <script>
 import http from '@/utils/request.js'
 import api from '@/utils/api.js'
+import { encrypt, decrypt } from '@/utils/encrypt.js'
 
 export default {
   data() {
@@ -187,10 +188,14 @@ export default {
         const rememberMe = uni.getStorageSync('rememberMe') === 'true'
         const savedUsername = uni.getStorageSync('savedUsername')
         const savedTenantName = uni.getStorageSync('savedTenantName')
+        const savedPassword = uni.getStorageSync('savedPassword')
         
         if (rememberMe && savedUsername && savedTenantName) {
           this.formData.username = savedUsername
           this.formData.tenantName = savedTenantName
+          if (savedPassword) {
+            this.formData.password = decrypt(savedPassword) // 解密密码
+          }
           this.rememberMe = true
           this.checkboxValue = ['remember']
         }
@@ -205,10 +210,14 @@ export default {
         uni.setStorageSync('rememberMe', 'true')
         uni.setStorageSync('savedUsername', this.formData.username)
         uni.setStorageSync('savedTenantName', this.formData.tenantName)
+        // 加密保存密码
+        const encryptedPassword = encrypt(this.formData.password)
+        uni.setStorageSync('savedPassword', encryptedPassword)
       } else {
         uni.removeStorageSync('rememberMe')
         uni.removeStorageSync('savedUsername')
         uni.removeStorageSync('savedTenantName')
+        uni.removeStorageSync('savedPassword')
       }
     },
     

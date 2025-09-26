@@ -104,9 +104,6 @@ export default {
         uni.removeStorageSync('userMenus')
         uni.removeStorageSync('openId')
         uni.removeStorageSync('tenant-id')
-        uni.removeStorageSync('rememberMe')
-        uni.removeStorageSync('savedUsername')
-        uni.removeStorageSync('savedTenantName')
         
         // 显示退出成功提示
         uni.showToast({
