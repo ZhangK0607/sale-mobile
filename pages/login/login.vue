@@ -29,22 +29,36 @@
       >
         <!-- 企业唯一ID -->
         <u-form-item label="企业唯一ID" prop="tenantName" class="form-item">
-          <u-input 
-            v-model="formData.tenantName" 
-            placeholder="请输入企业唯一ID"
-            clearable
-            cursor-color="#007aff"
-          ></u-input>
+          <view class="extend-class" @tap="handleWrapTap('tenantName')">
+            <input 
+              v-model="formData.tenantName" 
+              :disabled="inputStates.tenantName.disabled"
+              :focus="inputStates.tenantName.focus"
+              placeholder="请输入企业唯一ID"
+              cursor-color="#007aff"
+              @input="onInput($event, 'tenantName')"
+              @blur="onBlur($event, 'tenantName')"
+              @focus="onFocus($event, 'tenantName')"
+              class="uni-input"
+            />
+          </view>
         </u-form-item>
         
         <!-- 用户名 -->
         <u-form-item label="用户名" prop="username" class="form-item">
-          <u-input 
-            v-model="formData.username" 
-            placeholder="请输入用户名"
-            clearable
-            cursor-color="#007aff"
-          ></u-input>
+          <view class="extend-class" @tap="handleWrapTap('username')">
+            <input 
+              v-model="formData.username" 
+              :disabled="inputStates.username.disabled"
+              :focus="inputStates.username.focus"
+              placeholder="请输入用户名"
+              cursor-color="#007aff"
+              @input="onInput($event, 'username')"
+              @blur="onBlur($event, 'username')"
+              @focus="onFocus($event, 'username')"
+              class="uni-input"
+            />
+          </view>
         </u-form-item>
         
             <!-- 密码 -->
@@ -104,6 +118,17 @@ import { encrypt, decrypt } from '@/utils/encrypt.js'
 export default {
   data() {
     return {
+      isIOS: false,
+      inputStates: {
+        tenantName: {
+          disabled: false,
+          focus: false
+        },
+        username: {
+          disabled: false,
+          focus: false
+        }
+      },
       formData: {
         tenantName: '',
         username: '',
@@ -150,9 +175,47 @@ export default {
     this.checkLoginStatus()
     // 检查是否记住了登录信息
     this.loadRememberedInfo()
+    // 检查是否是iOS系统
+    const systemInfo = uni.getSystemInfoSync()
+    console.log('系统信息:', systemInfo)
+    this.isIOS = systemInfo.platform === 'ios'
+    // 如果是iOS，初始化禁用输入框
+    if (this.isIOS) {
+      this.inputStates.tenantName.disabled = true
+      this.inputStates.username.disabled = true
+    }
   },
   
   methods: {
+    // 输入框相关方法
+    onInput(event, field) {
+      this.formData[field] = event.detail.value
+      // 触发表单校验
+      this.$refs.loginForm.validateField(field)
+    },
+    
+    onBlur(event, field) {
+      if (this.isIOS) {
+        this.inputStates[field].disabled = true
+        this.inputStates[field].focus = false
+      }
+      // 触发表单校验
+      this.$refs.loginForm.validateField(field)
+    },
+    
+    onFocus(event, field) {
+      // 可以添加聚焦时的处理逻辑
+    },
+    
+    handleWrapTap(field) {
+      if (this.isIOS) {
+        this.inputStates[field].disabled = false
+        setTimeout(() => {
+          this.inputStates[field].focus = true
+        }, 20)
+      }
+    },
+    
     // 检查登录状态
     checkLoginStatus() {
       try {
@@ -370,6 +433,37 @@ export default {
 /* 强制 u-input 使用实体 1px 边框 */
 :deep(.u-input) {
   border-width: 1px !important;
+}
+
+/* 输入框相关样式 */
+.extend-class {
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.uni-input {
+  width: 100%;
+  height: 35px;
+  line-height: 35px;
+  font-size: 14px;
+  color: #333;
+}
+
+.password-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* 设置placeholder颜色 */
+::v-deep .uni-input-placeholder {
+    color: #c0c4cc !important;
 }
 
 /* 检查登录状态loading样式 */
