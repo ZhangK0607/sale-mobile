@@ -102,7 +102,7 @@
 				</view>
 				<view class="summary-right">
 					<text class="summary-label">合计金额: <text class="summary-value">￥{{ formatAmount(calculatedTotal) }}</text></text>
-					<picker mode="selector" :range="periodOptions" range-key="label" :value="periodIndex" @change="onPeriodChange">
+					<picker v-if="!isAllDisposable" mode="selector" :range="periodOptions" range-key="label" :value="periodIndex" @change="onPeriodChange">
 						<view class="period-trigger">
 							<text class="period-selected">/{{ periodUnit(selectedPeriod) }}</text>
 							<u-icon name="arrow-down" color="#909399" size="14" class="period-icon"></u-icon>
@@ -200,15 +200,20 @@ import api from '@/utils/api.js'
 		    	if (!this.selectedProducts[index]) return sum
 		    	const price = parseFloat(p.price) || 0
 		    	const src = p.period
-		    	const factor = this.periodFactor(this.selectedPeriod, src)
+		    	const factor = this.periodFactor(this.isAllDisposable ? 'disposable' : this.selectedPeriod, src)
 		    	const qty = p.num || 0
 		    	return sum + (price * factor * qty)
 		    }, 0)
 		    return Math.round(total * 100) / 100
 		},
-	periodIndex() {
-		return Math.max(0, this.periodOptions.findIndex(opt => opt.value === this.selectedPeriod))
-	},
+	    periodIndex() {
+	    	return Math.max(0, this.periodOptions.findIndex(opt => opt.value === this.selectedPeriod))
+	    },
+		// 判断是否所有选中的产品都是一次性的
+		isAllDisposable() {
+			const selectedProducts = this.productList.filter((_, index) => this.selectedProducts[index])
+			return selectedProducts.length > 0 && selectedProducts.every(p => !p.period || p.period === 'disposable')
+		},
 		// 是否全选
 		isAllSelected() {
 			return this.productList.length > 0 && this.selectedProducts.every(selected => selected)
