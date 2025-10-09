@@ -658,6 +658,7 @@ watch: {},
 		font-size: 28rpx;
 		padding-left: 70rpx;
 		gap: 16rpx;
+		margin-bottom: 20rpx;
 	}
 }
 .step-btn{

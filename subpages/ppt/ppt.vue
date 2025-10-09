@@ -386,6 +386,7 @@ export default {
     padding-left: 30%;
     background: #fff;
     box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.1);
+	margin-bottom: 20rpx;
 }
 
 .action-btn {
