@@ -306,10 +306,12 @@ export default {
       this.loading = true
       
       try {
+        uni.showLoading({ title: '登录中...', mask: true })
         // 1. 先通过租户名获取租户ID
         const tenantResponse = await api.user.getTenantIdByName(this.formData.tenantName)
         
         if (!tenantResponse.data) {
+          uni.hideLoading()
           uni.showToast({
             title: '企业ID不存在，请检查输入',
             icon: 'none'
@@ -356,17 +358,13 @@ export default {
             }
           } catch (error) {
             console.error('获取用户权限信息失败:', error)
+            uni.hideLoading()
             // 权限信息获取失败不影响登录流程
           }
           
-          // 显示登录成功提示
-          uni.showToast({
-            title: '登录成功',
-            icon: 'success'
-          })
-          
           // 跳转到首页
           setTimeout(() => {
+            uni.hideLoading()
             uni.switchTab({
               url: '/pages/index/index'
             })
@@ -375,6 +373,7 @@ export default {
         
       } catch (error) {
         console.error('登录失败:', error)
+        uni.hideLoading()
         // 错误提示已在request.js中处理
       } finally {
         this.loading = false

@@ -171,7 +171,7 @@ function handleResponse(res, options = {}) {
 function http(method = 'GET', url = '', data = {}, options = {}) {
   // 显示loading（除非明确禁用）
   if (!options.disableLoading) {
-    uni.showLoading({ title: '加载中...', mask: true })
+    uni.showLoading({ title: options.showToast || '加载中...', mask: true })
   }
   
   // 获取token和tenant-id

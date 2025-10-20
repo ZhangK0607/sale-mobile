@@ -20,10 +20,10 @@ const API = {
 // 用户API
 export const user = {
   // 获取租户ID（通过租户名）
-  getTenantIdByName: (tenantName) => http('GET', `${API.GET_TENANT_ID}?name=${tenantName}`),
+  getTenantIdByName: (tenantName) => http('GET', `${API.GET_TENANT_ID}?name=${tenantName}`, '', { disableLoading: true }),
   
   // 用户登录
-  login: (data) => http('POST', API.LOGIN, data),
+  login: (data) => http('POST', API.LOGIN, data, { disableLoading: true }),
   
   // 用户注册
   register: (data) => http('POST', API.REGISTER, data),
@@ -32,7 +32,7 @@ export const user = {
   getInfo: () => http('GET', API.USER_INFO),
   
   // 获取用户权限信息
-  getPermissionInfo: () => http('GET', API.GET_PERMISSION_INFO),
+  getPermissionInfo: () => http('GET', API.GET_PERMISSION_INFO, '', { disableLoading: true }),
   
   // 用户登出
   logout: () => http('POST', '/user/logout'),
@@ -40,17 +40,14 @@ export const user = {
 
 // 字典数据API
 export const dict = {
-  // 获取字典数据
-  getDictDataByType: (dictType) => http('GET', '/system/dict-data/getDiceDataByDictType', { dictType }),
-  
   // 获取行业类型
-  fetchProductTypes: (dictType) => http('GET', '/system/dict-data/getDiceDataByDictType', { dictType }),
+  fetchProductTypes: (dictType) => http('GET', '/system/dict-data/getDiceDataByDictType', { dictType }, { disableLoading: true }),
 }
 
 // 产品相关API
 export const product = {
   // 获取所有标签
-  getAllLabels: () => http('GET', '/sale/product/getAllLabels', {}),
+  getAllLabels: () => http('GET', '/sale/product/getAllLabels', {}, { disableLoading: true }),
   
   // AI智能推荐产品接口
   fetchAIRecommendProducts: (data, options = {}) => http('POST', '/sale/recommend/recommend', data, options),
