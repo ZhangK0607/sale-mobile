@@ -3,36 +3,28 @@
     <!-- 用户信息 -->
     <view class="user-info">
       <view class="avatar">
-        <u-avatar :src="userInfo.avatar || '/static/avatar.jpg'" size="80"></u-avatar>
+        <u-avatar :src="userInfo.avatar || '/static/avatar.jpg'" size="64"></u-avatar>
       </view>
       <view class="user-details">
-        <view class="nickname">{{ userInfo.nickname || userInfo.username || '未登录' }}</view>
+        <view class="nickname">{{ userInfo.nickname || userInfo.username || '未登录' }}
+          <view class="login-status">
+            <text class="status-text logged">已登录</text>
+            <!-- <text v-else class="status-text not-logged">未登录</text> -->
+          </view>
+        </view>
         <view class="username" v-if="userInfo.username && userInfo.username !== userInfo.nickname">
           {{ userInfo.username }}
         </view>
-        <view class="login-status">
-          <text class="status-text logged">已登录</text>
-          <!-- <text v-else class="status-text not-logged">未登录</text> -->
-        </view>
+        
       </view>
     </view>
     
     <!-- 菜单列表 -->
     <view class="menu-list">
-      <u-cell-group :border="false">
-        
-        
-        <u-cell 
-          title="退出登录" 
-          :is-link="true"
-          @click="handleLogout"
-        >
-          <template #icon>
-            <u-icon name="minus-circle" size="18" color="#909399"></u-icon>
-          </template>
-        </u-cell>
-
-      </u-cell-group>
+      <view class="logout-card" @click="handleLogout">
+        <img src="/static/logout.png" alt="logout" class="logout-img" />
+        <text class="logout-text">退出登录</text>
+      </view>
     </view>
   </view>
 </template>
@@ -134,13 +126,17 @@ export default {
 
 <style lang="scss" scoped>
 .profile-container {
-  background-color: #f5f5f5;
-  // min-height: 100vh;
+  /* #ifdef H5 */
+  height: calc(100vh - 94px); /* H5环境下减去导航栏高度 */
+  /* #endif */
+  /* #ifdef MP-WEIXIN */
+  height: 100vh; /* 小程序环境下使用100% */
+  /* #endif */
   box-sizing: border-box;
+  background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);
 }
 
 .user-info {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 60rpx 40rpx;
   display: flex;
   align-items: center;
@@ -156,30 +152,34 @@ export default {
 }
 
 .nickname {
-  font-size: 36rpx;
+  font-size: 16px;
   font-weight: 500;
   margin-bottom: 10rpx;
+  color: #262626;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .username {
-  font-size: 28rpx;
-  opacity: 0.8;
+  font-size: 14px;
+  color: #262626;
   margin-bottom: 10rpx;
 }
 
 .login-status {
   font-size: 24rpx;
+  color: #3194FA;
 }
 
 .status-text {
-  padding: 8rpx 16rpx;
+  padding: 2px 4px;
   border-radius: 20rpx;
-  font-size: 22rpx;
+  font-size: 10px;
 }
 
 .logged {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background-color: #D9E8F9;
 }
 
 .not-logged {
@@ -189,7 +189,35 @@ export default {
 
 .menu-list {
   margin-top: 20rpx;
-  background-color: #fff;
+  color: #262626;
+}
+/* 退出登录卡片样式 */
+.logout-card {
+  background: #fff;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  transition: box-shadow 0.2s;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.logout-card:active {
+  box-shadow: 0 2px 8px rgba(61, 100, 255, 0.03);
+}
+.logout-text {
+  font-size: 14px;
+  color: #262626;
+}
+/* 退出登录图片样式 */
+.logout-img {
+  width: 16px;
+  height: 16px;
+  display: block;
+  margin-right: 10px;
 }
 </style>
+
+
+
 

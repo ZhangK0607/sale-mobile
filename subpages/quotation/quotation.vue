@@ -96,17 +96,22 @@
             <u-button type="info" size="small" class="action-btn" shape="circle" @click="shareQuotation">
                 分享
             </u-button>
+            <span class="separate">|</span>
             <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadPdf">
                 下载
             </u-button>
         </view>
+        <!-- 分享弹窗 -->
+        <ShareModal :show="shareModalVisible" :link="shareModalLink" @close="shareModalVisible = false" />
     </view>
 </template>
 
 <script>
 import api from '@/utils/api.js'
+import ShareModal from '@/components/ShareModal.vue'
 
 export default {
+    components: { ShareModal },
     data() {
         return {
             quotationData: {
@@ -118,7 +123,9 @@ export default {
                 expireDay: '',
                 clause: ''
             },
-            billingPeriod: ''
+            billingPeriod: '',
+            shareModalVisible: false,
+            shareModalLink: ''
         }
     },
     onLoad(options) {
@@ -170,11 +177,8 @@ export default {
                 if (uni.setClipboardData) {
                     uni.setClipboardData({ data: url, success: () => {} })
                 }
-                uni.showModal({
-                    title: '分享链接',
-                    content: url,
-                    showCancel: false
-                })
+                this.shareModalLink = url
+                this.shareModalVisible = true
             } catch (e) {
                 uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
             } finally {
@@ -467,22 +471,30 @@ export default {
 
 /* 底部操作按钮 */
 .bottom-actions {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: flex-end;
-    font-size: 28rpx;
-    gap: 16rpx;
-    padding: 24rpx;
-    padding-left: 30%;
-    background: #fff;
-    box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.1);
-    margin-bottom: 20rpx;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 28rpx;
+	gap: 16rpx;
+	padding: 18rpx 24rpx 44rpx 24rpx;
+	color: #232323;
+	background: #fff;
+	box-shadow: 0 -2rpx 24rpx rgba(0, 0, 0, 0.08);
+	.separate{
+		color: #F2F2F2;
+	}
+    :deep .u-button{
+		border: none !important;
+	}
 }
 
 .action-btn {
-    flex: 1;
+	flex: 1;
+	min-width: 0;
+	border: none !important;
 }
 </style>

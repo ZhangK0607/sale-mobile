@@ -64,7 +64,7 @@
                                         </template>
                                         <template #input>
                                             <text
-                                                style="width: 50px;text-align: center;"
+                                                style="width: 50px;text-align: center;font-size: 12px;"
                                                 class="input"
                                             >{{ product.num }}</text>
                                         </template>
@@ -90,27 +90,26 @@
 		<!-- 底部操作按钮 -->
 		<view class="bottom-con" v-if="productList.length > 0">
 			<view class="bottom-summary">
-				<!-- 全选按钮 -->
-				<view class="select-all-container">
-					<view class="select-all" @click="toggleSelectAll">
-						<view class="checkbox-icon" :class="{ 'selected': isAllSelected }">
-							<u-icon v-if="isAllSelected" name="checkmark" color="#fff" size="14"></u-icon>
-						</view>
-						<text class="select-all-text">全选</text>
-					</view>
-					<text class="selected-count">已选{{ selectedCount }}条</text>
-				</view>
-				<view class="summary-right">
-					<text class="summary-label">合计金额: <text class="summary-value">￥{{ formatAmount(calculatedTotal) }}</text></text>
-					<picker v-if="!isAllDisposable" mode="selector" :range="periodOptions" range-key="label" :value="periodIndex" @change="onPeriodChange">
-						<view class="period-trigger">
-							<text class="period-selected">/{{ periodUnit(selectedPeriod) }}</text>
-							<u-icon name="arrow-down" color="#909399" size="14" class="period-icon"></u-icon>
-						</view>
-					</picker>
-				</view>
-			</view>
-			<u-divider style="margin: 8px 0;"></u-divider>
+		    	<!-- 全选按钮 -->
+		    	<view class="select-all-container">
+		    		<view class="select-all" @click="toggleSelectAll">
+		    			<view class="checkbox-icon" :class="{ 'selected': isAllSelected }">
+		    				<u-icon v-if="isAllSelected" name="checkmark" color="#fff" size="14"></u-icon>
+		    			</view>
+		    			<text class="select-all-text">全选</text>
+		    		</view>
+		    		<text class="selected-count">已选{{ selectedCount }}条</text>
+		    	</view>
+		    	<view class="summary-right">
+		    		<text class="summary-label">合计金额: <text class="summary-value">￥{{ formatAmount(calculatedTotal) }}</text></text>
+		    		<picker v-if="!isAllDisposable" mode="selector" :range="periodOptions" range-key="label" :value="periodIndex" @change="onPeriodChange">
+		    			<view class="period-trigger">
+		    				<text class="period-selected">/{{ periodUnit(selectedPeriod) }}</text>
+		    				<u-icon name="arrow-down" color="#909399" size="14" class="period-icon"></u-icon>
+		    			</view>
+		    		</picker>
+		    	</view>
+		    </view>
 			<view class="bottom-actions">
 		    	<u-button 
 		    		type="info" 
@@ -120,6 +119,7 @@
 		    		@click="generatePlan">
 		    		生成报价单
 		    	</u-button>
+				<span class="separate">|</span>
 		    	<u-button 
 		    		type="info" 
 		    		size="small"
@@ -128,6 +128,7 @@
 		    		@click="generateProposal">
 		    		生成ppt
 		    	</u-button>
+				<span class="separate">|</span>
 		    	<u-button 
 		    		type="info" 
 		    		size="small"
@@ -431,7 +432,12 @@ watch: {},
 
 /* 内容区域 */
 .content {
-	height: calc(100vh - 88rpx - 200rpx);
+	/* #ifdef H5 */
+	height: calc(100vh - 88rpx - 200rpx); /* H5环境下减去导航栏高度 */
+	/* #endif */
+	/* #ifdef MP-WEIXIN */
+	height: calc(100vh - 200rpx); /* 小程序环境下使用100% */
+	/* #endif */
 }
 
 /* 产品列表 */
@@ -494,8 +500,8 @@ watch: {},
 	transition: all 0.3s;
 	
 	&.selected {
-		background-color: #d9001bc8;
-		border-color: #d9001bc8;
+		background-color: #2087F0;
+		border-color: #2087F0;
 	}
 }
 
@@ -524,16 +530,16 @@ watch: {},
 }
 
 .product-name {
-	font-size: 28rpx;
+	font-size: 14px;
 	font-weight: 500;
-	color: #303133;
+	color: #262626;
 	margin-bottom: 8rpx;
 	line-height: 1.4;
 }
 
 .product-desc {
-	font-size: 24rpx;
-	color: #909399;
+	font-size: 12px;
+	color: #858587;
 	line-height: 1.5;
 	margin-bottom: 12rpx;
 	display: -webkit-box;
@@ -553,9 +559,9 @@ watch: {},
 }
 
 .product-price {
-	font-size: 28rpx;
+	font-size: 14px;
 	font-weight: bold;
-	color: #d9001bc8;
+	color: #DC394A;
 }
 
 .quantity-input {
@@ -579,9 +585,13 @@ watch: {},
 }
 
 .bottom-summary {
+	background-color: #fff;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	padding: 24rpx;
+	margin-bottom: 4px;
+	border-radius: 0 0 10px 10px;
 }
 
 .summary-right {
@@ -622,25 +632,25 @@ watch: {},
 
 .select-all-text {
 	margin-left: 12rpx;
-	font-size: 28rpx;
-	color: #303133;
+	font-size: 14px;
+	color: #262626;
 }
 
 /* 已选统计 */
 .selected-count {
-	font-size: 24rpx;
-	color: #909399;
+	font-size: 12px;
+	color: #858587;
 }
 
 .summary-label {
-	font-size: 28rpx;
-	color: #303133;
+	font-size: 14px;
+	color: #262626;
 }
 
 .summary-value {
-	font-size: 32rpx;
+	font-size: 14px;
 	font-weight: bold;
-	color: #d9001bc8;
+	color: #DC394A;
 }
 
 /* 底部操作按钮 */
@@ -649,16 +659,27 @@ watch: {},
 	bottom: 0;
 	left: 0;
 	right: 0;
-	padding: 24rpx;
-	background: #fff;
-	box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.1);
+	background-color: #f0f0f0;
+	box-shadow: 0 -16rpx 24rpx rgba(224, 224, 224, 0.15);
 	.bottom-actions{
+		box-shadow: 0 -16rpx 24rpx rgba(224, 224, 224, 0.15);
+		background: #fff;
+		padding: 14rpx 0 44rpx 0;
 		display: flex;
-		justify-content: flex-end;
+		justify-content: space-between;
+		align-items: center;
 		font-size: 28rpx;
-		padding-left: 70rpx;
-		gap: 16rpx;
-		margin-bottom: 20rpx;
+		.separate{
+			color: #F2F2F2;
+		}
+	}
+	.bottom-actions .action-btn {
+		flex: 1;
+		min-width: 0;
+		border: none !important;
+	}
+	:deep .u-button{
+		border: none !important;
 	}
 }
 .step-btn{

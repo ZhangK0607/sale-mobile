@@ -59,29 +59,36 @@
 				</view>
 			</view>
 		</scroll-view>
-        <!-- 底部操作按钮 -->
-        <view class="bottom-actions">
-            <u-button type="info" size="small" class="action-btn" shape="circle" @click="shareContract">
-                分享
-            </u-button>
-            <u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadContractPdf">
-                下载
-            </u-button>
-        </view>
+		<!-- 底部操作按钮 -->
+		<view class="bottom-actions">
+			<u-button type="info" size="small" class="action-btn" shape="circle" @click="shareContract">
+				分享
+			</u-button>
+			<span class="separate">|</span>
+			<u-button type="info" size="small" class="action-btn" shape="circle" @click="downloadContractPdf">
+				下载
+			</u-button>
+		</view>
+		<!-- 分享弹窗 -->
+		<ShareModal :show="shareModalVisible" :link="shareModalLink" @close="shareModalVisible = false" />
 	</view>
 </template>
 
 <script>
 import api from '@/utils/api.js'
+import ShareModal from '@/components/ShareModal.vue'
 
 export default {
-	data() {
-		return {
-			contract: {},
-			contentHtml: '',
-			loading: true
-		}
-	},
+       components: { ShareModal },
+       data() {
+	       return {
+		       contract: {},
+		       contentHtml: '',
+		       loading: true,
+		       shareModalVisible: false,
+		       shareModalLink: ''
+	       }
+       },
 	onLoad(options) {
 		try {
 			// 从本地存储获取合同数据
@@ -186,30 +193,33 @@ export default {
 		async shareContract() {
 			try {
 				if (!this.contract?.contractNo || !this.contract?.content) {
-					uni.showToast({ title: '合同数据未就绪', icon: 'none' })
-					return
+				    uni.showToast({ title: '合同数据未就绪', icon: 'none' })
+				    return
 				}
 				uni.showLoading({ title: '生成分享链接...', mask: true })
 				const res = await api.contract.buildDownloadContract({ contractNo: this.contract.contractNo, content: this.contract.content, isShare: true })
 				const data = res?.data
-				// 如果后端直接返回URL
+				let link = ''
 				if (typeof data === 'string') {
-					if (uni.setClipboardData) {
-						uni.setClipboardData({ data, success: () => {} })
-					}
-					uni.showModal({ title: '分享链接', content: data, showCancel: false })
-					return
+				   link = data
+				   if (uni.setClipboardData) {
+					   uni.setClipboardData({ data: link, success: () => {} })
+				   }
+				} else {
+				   // 否则尝试按文件流处理
+				   const arrayBuffer = data || res
+				   if (arrayBuffer && (typeof window !== 'undefined')) {
+					   const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+					   link = window.URL.createObjectURL(blob)
+					   if (uni.setClipboardData) {
+						   uni.setClipboardData({ data: link, success: () => {} })
+					   }
+				   }
 				}
-				// 否则尝试按文件流处理
-				const arrayBuffer = data || res
-				if (arrayBuffer && (typeof window !== 'undefined')) {
-					const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-					const url = window.URL.createObjectURL(blob)
-					if (uni.setClipboardData) {
-						uni.setClipboardData({ data: url, success: () => {} })
-					}
-					uni.showModal({ title: '分享链接', content: url, showCancel: false })
-					return
+				if (link) {
+				   this.shareModalLink = link
+				   this.shareModalVisible = true
+				   return
 				}
 				uni.showToast({ title: '未获取到分享内容', icon: 'none' })
 			} catch (e) {
@@ -242,23 +252,31 @@ export default {
 .loading { text-align:center; color:#909399; padding: 32rpx 0; }
 /* 底部操作按钮 */
 .bottom-actions {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: flex-end;
-    font-size: 28rpx;
-    gap: 16rpx;
-    padding: 24rpx;
-    padding-left: 30%;
-    background: #fff;
-    box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.1);
-	margin-bottom: 20rpx;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 28rpx;
+	gap: 16rpx;
+	padding: 18rpx 24rpx 44rpx 24rpx;
+	color: #232323;
+	background: #fff;
+	box-shadow: 0 -2rpx 24rpx rgba(0, 0, 0, 0.08);
+	.separate{
+		color: #F2F2F2;
+	}
+	:deep .u-button{
+		border: none !important;
+	}
 }
 
 .action-btn {
-    flex: 1;
+	flex: 1;
+	min-width: 0;
+	border: none !important;
 }
 </style>
 

@@ -24,66 +24,39 @@
 				<!-- 默认文本域 -->
 				<u-textarea 
 					v-if="!useNativeVoiceInput"
+					ref="descTextarea"
 					v-model="description" 
+					:focus="descTextareaFocus"
 					placeholder="请描述您的需求，描述越详细，AI推荐越精准。可提及品牌、行业类型、数据条件等具体信息，获得更贴近场景的智能推荐产品" 
 					height="80" 
 					cursor-color="#007aff"
+					:selection-end="description.length"
 					:maxlength="800"
 					:disabled="isRecording">
 				</u-textarea>
-				
-				<view class="mic" @click="toggleVoiceInput">
-					<view class="voice-animation" v-if="isRecording">
+				<!-- 按住说话语音输入区域 -->
+				<view class="voice-touch-bar">
+				  <view class="voice-touch-icon">
+					<img src="/static/keyboard.png" alt="logout" style="width: 20px; height: 20px;" @click="focusTextarea" />
+				  </view>
+				  <view 
+					class="voice-touch-btn"
+					:style="isRecording ? 'border:1px solid #07c160' : 'border:1px solid #E4E4E4'"
+					@touchstart="toggleVoiceInput(true)"
+					@touchend="toggleVoiceInput(false)"
+				  >
+				  <view class="voice-animation" v-if="isRecording">
 				    	<view class="voice-wave"></view>
 				    	<view class="voice-wave"></view>
 				    	<view class="voice-wave"></view>
 				    </view>
-					<u-icon 
-						name="mic" 
-						:color="isRecording ? '#07c160' : '#909399'" 
-						size="22">
-					</u-icon>
+					<text class="voice-touch-text" :style="isRecording ? 'color:#07c160' : ''">{{isRecording?'正在识别':'按住说话'}}</text>
+					<u-icon name="mic" :color="isRecording ? '#07c160' : '#bcbcbc'" size="14" style="margin-left:2px" />
+				  </view>
 				</view>
 			</view>
-			<!-- 语音输入状态提示 -->
-			<!-- <view v-if="isRecording" class="voice-status">
-				<view class="voice-animation">
-					<view class="voice-wave"></view>
-					<view class="voice-wave"></view>
-					<view class="voice-wave"></view>
-				</view>
-				<text class="voice-text">{{ interimText || '正在录音中，请说话...' }}</text>
-				<u-button type="error" size="mini" @click="stopRecording" style="width: 20px;">停止录音</u-button>
-			</view> -->
 			<view class="filters">
 				<u-dropdown ref="dropdown">
-					<!-- <u-dropdown-item title="产品预算" >
-						<view class="slot-content">
-							<u-input 
-								v-model="budget" 
-								placeholder="请输入预算金额" 
-								type="number"
-								clearable>
-								<template #suffix>  
-									<text class="budget-unit-inline">元</text>
-								</template>
-							</u-input>
-							<view class="budget-actions">
-								<u-button 
-									type="info" 
-									size="small" 
-									@click="cancelDropdown('budget')">
-									重置
-								</u-button>
-								<u-button 
-									type="primary" 
-									size="small" 
-									@click="confirmProCount">
-									确定
-								</u-button>
-							</view>
-						</view>
-					</u-dropdown-item> -->
 					<u-dropdown-item title="行业类型">
 						<view class="slot-content">
 							<!-- 行业类型数据循环出来的tag -->
@@ -213,16 +186,27 @@
 				</view>
 			</scroll-view>
 		</view>
-
-		<u-float-button 
-			:backgroundColor="fabPattern.buttonColor" 
-			:color="fabPattern.iconColor" 
-			right="24rpx" 
-			bottom="200rpx" 
-			@click="onFab">
-			<u-icon name="file-text" :color="fabPattern.iconColor" size="20"></u-icon>
-			<span class="fab-text">生成方案</span>
-		</u-float-button>
+		
+		<movable-area v-if="recommendProducts.length > 0" style="position:fixed;right:20rpx;bottom:60px;height: 120px;width:120px;z-index:99999;">
+			<movable-view
+				direction="all"
+				:x="fabPos.x"
+				:y="fabPos.y"
+				@change="onFabMove"
+				@touchend="onFabTouchEnd"
+				out-of-bounds="false"
+				style="width:60px;height:60px;"
+			>
+				<view class="fab-scheme-container" @click="onFab">
+					<view class="fab-scheme-icon">
+						<u-icon name="file-text" :color="fabPattern.iconColor" size="20"></u-icon>
+					</view>
+					<view class="fab-scheme-btn">
+						生成方案
+					</view>
+				</view>
+			</movable-view>
+		</movable-area>
 	</view>
 </template>
 
@@ -252,7 +236,17 @@
 				useNativeVoiceInput: false,
 				// 微信同声传译插件
 				wxAsrManager: null,
-				interimText: ''
+				interimText: '',
+				fabPos: {
+				   x: 30, // 初始在区域中间
+				   y: 30
+				},
+				fabTemp: {
+				   x: 30,
+				   y: 30
+				},
+				fabDragging: false,
+				descTextareaFocus: false,
 			}
 		},
 		onLoad() {
@@ -268,6 +262,13 @@
 			// #endif
 		},
 		methods: {
+			focusTextarea() {
+				// 先置为 false，等 DOM 更新后再置为 true
+                this.descTextareaFocus = false;
+                this.$nextTick(() => {
+                  this.descTextareaFocus = true;
+                });
+			},
 			async recommend() {
 				// 验证描述和标签必须有一个有值
 				if (!this.description && (!this.labels || this.labels.length === 0)) {
@@ -446,14 +447,12 @@
 					this.wxAsrManager = plugin.getRecordRecognitionManager()
 					this.wxAsrManager.onRecognize = (res) => {
 						console.log('语音识别结果:', res)
-						this.isRecording = true
 						if(res.result) {
 							this.description = this.description + res.result
 						}
 					}
 					this.wxAsrManager.onStop = (res) => {
 						console.log('语音识别停止:', res)
-						this.isRecording = false
 						const finalText = (res && res.result) ? res.result : ''
 						if (finalText) {
 							this.description = this.description + finalText
@@ -464,7 +463,6 @@
 						this.interimText = ''
 					}
 					this.wxAsrManager.onError = (err) => {
-						this.isRecording = false
 						this.interimText = ''
 						const tips = {
                           '-30003': '说话时间间隔太短，无法识别语音',
@@ -483,11 +481,14 @@
 				// #endif
 			},
 			// 切换语音输入
-			toggleVoiceInput() {
-				if (this.isRecording) {
-					this.stopRecording()
-				} else {
+			toggleVoiceInput(query) {
+				this.isRecording = query
+				if (query) {
+					console.log('开始')
 					this.startRecording()
+				} else {
+					console.log('结束')
+					this.stopRecording()
 				}
 			},
 			// 开始录音
@@ -518,8 +519,7 @@
 				recognition.interimResults = false
 				
 				recognition.onstart = () => {
-					this.isRecording = true
-					uni.showToast({ title: '开始录音', icon: 'none' })
+					// uni.showToast({ title: '开始录音', icon: 'none' })
 				}
 				
 				recognition.onresult = (event) => {
@@ -534,7 +534,6 @@
 				}
 				
 				recognition.onend = () => {
-					this.isRecording = false
 				}
 				
 				recognition.start()
@@ -571,8 +570,7 @@
 						lang: 'zh_CN',
 						duration: 60000
 					})
-					this.isRecording = true
-					uni.showToast({ title: '开始录音', icon: 'none' })
+					// uni.showToast({ title: '开始录音', icon: 'none' })
 				} catch (e) {
 					console.error('启动语音识别失败:', e)
 					uni.showToast({ title: '语音识别启动失败', icon: 'none' })
@@ -639,12 +637,64 @@
 					disposable: '一次性'
 				}
 				return unitMap[period] || '一次性'
+			},
+			onFabMove(e) {
+			   // 只记录临时变量，不直接赋值，防止抖动
+			   this.fabTemp.x = e.detail.x
+			   this.fabTemp.y = e.detail.y
+			},
+			onFabTouchEnd() {
+			   // 拖动结束时才赋值，防止回弹
+			   this.fabPos.x = this.fabTemp.x
+			   this.fabPos.y = this.fabTemp.y
 			}
 		}
 	}
 </script>
 
 <style scoped>
+	/* 设置u-textarea边框颜色 */
+	.fab-scheme-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		position: fixed;
+		z-index: 99999;
+		pointer-events: auto;
+	}
+	.fab-scheme-icon {
+		width: 30px;
+		height: 30px;
+		border: 1px solid #DDE9F9;
+		background: #FAFBFC;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 6px;
+	}
+	.fab-scheme-btn {
+		width: 53px;
+		height: 16px;
+		background: #f7faff;
+		border-radius: 18px;
+		border: 1.5px solid #DDE9F9;
+		color: #5DB3FB;
+		font-size: 10px;
+		text-align: center;
+		cursor: pointer;
+		font-weight: 500;
+		user-select: none;
+	}
+	::v-deep  .u-dropdown__menu__item__text {
+		font-size: 12px !important;
+		color: #999999 !important;
+	}
+    ::v-deep .u-textarea {
+    	border: none !important;
+		border-radius: 14px !important;
+    }
 	.page { 
 		background: #ffffff; 
 		/* 设置页面级别的层叠上下文 */
@@ -658,20 +708,43 @@
 		height: 100vh; /* 小程序环境下使用100% */
 		/* #endif */
 		overflow: hidden; /* 禁用页面滚动 */
+		background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);
 	}
 	.card { 
 		background: #ffffff; 
 		margin: 24rpx 0; 
 		padding: 24rpx; 
-		border-radius: 12rpx; 
+		border-radius: 12px; 
 		position: relative; 
-		border: 1px solid #e5e6eb;
+		border: 1px solid transparent;
+		position: relative;
+		background-clip: padding-box;
+		z-index: 10;
+		
 		/* 重要：允许子元素溢出 */
 		overflow: visible;
 		/* 确保卡片有足够的层级 */
 		z-index: 10;
 	}
-	.input-container { position: relative; }
+	.card::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: 12px;
+		padding: 1px;
+		background: linear-gradient(135deg, #3D64FF, #3D9CFF);
+		-webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+		mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+		pointer-events: none;
+		z-index: 1;
+	}
+	.input-container { 
+		position: relative; 
+		border: 1px solid #F2F2F2;
+    	border-radius: 12px;
+	}
 	.mic { 
 		position: absolute; 
 		right: 4rpx; 
@@ -698,6 +771,7 @@
 		display: flex;
 		align-items: center;
 		gap: 4rpx;
+		margin-right: 8px;
 	}
 	
 	.voice-wave {
@@ -746,14 +820,17 @@
 		border-color: #d9001bc8;
 	}
 	.filters { 
-		margin-top: 12rpx; 
 		/* 关键修改：允许下拉内容溢出容器 */
 		overflow: visible !important;
 		/* 设置高层级确保下拉菜单显示在最上层 */
 		position: relative;
 		z-index: 9999;
 	}
-	.submit { margin-top: 12rpx; }
+	.submit {
+		background: linear-gradient(90deg, #6BB4FF 0%, #56A9FF 50%, #3096FF 100%) !important;
+		border: none !important;
+		color: #fff !important;
+	}
 	
 	/* 预算输入弹窗样式 */
 	.budget-input-container {
@@ -835,10 +912,10 @@
 	/* 产品列表滚动容器 */
 	.product-list-scroll {
 		/* #ifdef H5 */
-		max-height: calc(100vh - 310px - 50px); /* H5环境下减去导航栏高度 */
+		max-height: calc(100vh - 345px - 50px); /* H5环境下减去导航栏高度 */
 		/* #endif */
 		/* #ifdef MP-WEIXIN */
-		max-height: calc(100vh - 262px); /* 小程序环境下使用100% */
+		max-height: calc(100vh - 307px); /* 小程序环境下使用100% */
 		/* #endif */
 		width: 100%;
 	}
@@ -874,6 +951,7 @@
 		transition: all 0.3s;
 		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
 		cursor: pointer;
+		background: #fff;
 	}
 	
 	.product-card:hover {
@@ -901,16 +979,16 @@
 	}
 	
 	.product-name {
-		font-size: 28rpx;
+		font-size: 14px;
 		font-weight: 500;
-		color: #303133;
+		color: #262626;
 		margin-bottom: 8rpx;
 		line-height: 1.4;
 	}
 	
 	.product-desc {
-		font-size: 24rpx;
-		color: #909399;
+		font-size: 12px;
+		color: #858587;
 		line-height: 1.5;
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
@@ -921,9 +999,9 @@
 	}
 	
 	.product-price {
-		font-size: 28rpx;
+		font-size: 14px;
 		font-weight: bold;
-		color: #d9001bc8;
+		color: #DC394A;
 		margin-top: 12rpx;
 	}
 	
@@ -942,10 +1020,46 @@
 		gap: 8px;
         row-gap: 16rpx;
 	}
+	/* 按住说话语音输入条样式 */
+	.voice-touch-bar {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      height: 48px;
+      box-sizing: border-box;
+    }
+    .voice-touch-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+    }
+    .voice-touch-btn {
+    	border: 1px solid #E4E4E4;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-radius: 6px;
+      height: 32px;
+      font-size: 12px;
+      color: #bcbcbc;
+    }
+    /* .voice-touch-text {
+      font-size: 15px;
+      color: #bcbcbc;
+    } */
 </style>
 
 <!-- 添加全局样式确保 dropdown 组件正常显示 -->
 <style>
+    :deep movable-area {
+      pointer-events: none !important;
+    }
+	:deep movable-view {
+      pointer-events: auto !important;
+    }
     .u-input{
     	background: #fff;
     }
