@@ -238,11 +238,11 @@
 				wxAsrManager: null,
 				interimText: '',
 				fabPos: {
-				   x: 30, // 初始在区域中间
+				   x: 63, // 初始在区域中间
 				   y: 30
 				},
 				fabTemp: {
-				   x: 30,
+				   x: 63,
 				   y: 30
 				},
 				fabDragging: false,
