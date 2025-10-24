@@ -1,5 +1,6 @@
 <template>
   <view class="profile-container">
+    <CustomNavbar title="我的" :overflowHidden="false"/>
     <!-- 用户信息 -->
     <view class="user-info">
       <view class="avatar">
@@ -31,9 +32,11 @@
 
 <script>
 import wechat from '@/utils/wechat.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
   name: 'Profile',
+  components: { CustomNavbar },
   data() {
     return {
       userInfo: {},
@@ -127,13 +130,15 @@ export default {
 <style lang="scss" scoped>
 .profile-container {
   /* #ifdef H5 */
-  height: calc(100vh - 94px); /* H5环境下减去导航栏高度 */
-  /* #endif */
-  /* #ifdef MP-WEIXIN */
-  height: 100vh; /* 小程序环境下使用100% */
-  /* #endif */
+	height: calc(100vh - 50px); /* H5环境下减去导航栏高度 */
+	/* #endif */
+	/* #ifdef MP-WEIXIN */
+	height: 100vh; /* 小程序环境下使用100% */
+	/* #endif */
   box-sizing: border-box;
   background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);
+  position: relative;
+  overflow: hidden; /* 禁用页面滚动 */
 }
 
 .user-info {

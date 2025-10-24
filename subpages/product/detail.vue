@@ -1,17 +1,8 @@
 <template>
 	<view class="product-detail">
-		<!-- 自定义导航栏 -->
-		<!-- <view class="navbar">
-			<view class="nav-left" @click="goBack">
-				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
-			</view>
-			<view class="nav-title">{{ productInfo.name || '思政助手' }}</view>
-			<view class="nav-right">
-				<u-icon name="more-dot-fill" color="#333" size="20"></u-icon>
-			</view>
-		</view> -->
+		<CustomNavbar :title="productInfo.name || '产品详情'" :showBack="true" />
 
-		<scroll-view scroll-y class="content">
+		<scroll-view scroll-y class="content" :style="{height: productListMaxHeight}">
 			<!-- 产品轮播图 -->
 			<view v-if="showPicUrls && showPicUrls.length > 0" class="product-swiper">
 				<swiper 
@@ -118,10 +109,13 @@
 
 <script>
 import api from '@/utils/api.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
+	components: { CustomNavbar },
 	data() {
 		return {
+			statusBarHeight: 0,
 			productId: '', // 产品ID
 			productInfo: {
 				typeLabel: [],
@@ -133,8 +127,13 @@ export default {
 		}
 	},
 	computed: {
-	},
+		productListMaxHeight() {
+			return `calc(100vh - 44px - ${this.statusBarHeight}px)`
+		},
+    },
 	onLoad(options) {
+		const sys = uni.getSystemInfoSync()
+		this.statusBarHeight = sys.statusBarHeight || 20
 		// 获取传递的产品ID
 		if (options.id) {
 			this.productId = options.id
@@ -156,7 +155,7 @@ export default {
 			try {
 				uni.showLoading({ title: '加载中...' })
 				const response = await api.product.getProductDetail(this.productId)
-				
+
 				if (response.code === 0 && response.data) {
 					this.productInfo = {
 						...response.data,
@@ -165,10 +164,10 @@ export default {
 						pubLabels: response.data.pubLabels?.split(',') || []
 					}
 					console.log(this.productInfo,'this.productInfo')
-					// 设置导航栏标题
-					uni.setNavigationBarTitle({
-						title: this.productInfo.name || '产品详情'
-					})
+					// 设置导航栏标题（如用自定义导航栏可省略此行）
+					// uni.setNavigationBarTitle({
+					//     title: this.productInfo.name || '产品详情'
+					// })
 					// 获取产品图片
 					this.fetchProductImages()
 				} else {
@@ -193,7 +192,7 @@ export default {
 				// 如果产品有ID，则获取图片
 				if (this.productId) {
 					const response = await api.product.fetchProductPptImages(this.productId)
-					
+
 					if (response.code === 0 && response.data) {
 						this.productImages = Array.isArray(response.data?.pptPicUrls) ? response.data.pptPicUrls : []
 						this.showPicUrls = Array.isArray(response.data?.showPicUrls) ? response.data.showPicUrls : []
@@ -210,7 +209,7 @@ export default {
 				current: currentUrl
 			})
 		},
-		
+
 		// 预览产品PPT图片
 		previewImage(currentUrl, index) {
 			const urls = this.productImages.map(img => img.url || img)
@@ -226,7 +225,7 @@ export default {
 <style lang="scss" scoped>
 .product-detail {
 	// min-height: 100vh;
-	background: #f5f5f5;
+	background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%)
 }
 
 /* 产品轮播图 */
@@ -280,7 +279,8 @@ export default {
 
 /* 内容区域 */
 .content {
-	height: calc(100vh - 88rpx);
+	border-radius: 10px;
+    overflow: hidden;
 }
 
 /* 产品头部 */

@@ -1,5 +1,8 @@
 <template>
 	<view class="scheme-page">
+		<!-- 自定义顶部导航栏 -->
+		<CustomNavbar title="生成方案" :showBack="true" />
+
 		<!-- 自定义导航栏 -->
 		<!-- <view class="navbar">
 			<view class="nav-left" @click="goBack">
@@ -11,11 +14,11 @@
 			</view>
 		</view> -->
 
-		<scroll-view scroll-y class="content">
+		<scroll-view scroll-y class="content" :style="{height: productListMaxHeight}">
 			<!-- 产品列表 -->
 			<view class="product-section">
 				<!-- 空状态提示 -->
-				<view v-if="productList.length === 0" class="empty-state">
+				<view v-if="productList.length === 0 && dataLoaded==true" class="empty-state">
 					<view class="empty-icon">📦</view>
 					<view class="empty-text">暂无产品数据</view>
 					<view class="empty-desc">请先在首页搜索推荐产品</view>
@@ -144,10 +147,13 @@
 
 <script>
 import api from '@/utils/api.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 	export default {
+	components: { CustomNavbar },
 	data() {
 		return {
+			statusBarHeight: 0,
 			productList: [], // 产品列表
 			selectedProducts: [], // 选中状态数组
 		    selectedPeriod: 'year',
@@ -160,6 +166,9 @@ import api from '@/utils/api.js'
 		}
 	},
 	onLoad(options) {
+		const sys = uni.getSystemInfoSync()
+		this.statusBarHeight = sys.statusBarHeight || 20
+
 		// 从本地存储获取产品数据
 		try {
 			const storedProducts = uni.getStorageSync('recommendProducts')
@@ -172,20 +181,21 @@ import api from '@/utils/api.js'
 				// 初始化选中状态数组，默认全部选中
 				this.selectedProducts = new Array(this.productList.length).fill(true)
 				console.log('从本地存储获取的产品数据:', this.productList)
-				
-				// 标记数据已读取，在页面卸载时清除
-				this.dataLoaded = true
 			} else {
 				// 没有数据时显示空状态
 				this.productList = []
 				this.selectedProducts = []
 				console.log('未找到产品数据，显示空状态')
 			}
+			// 标记数据已读取，在页面卸载时清除
+			this.dataLoaded = true
 		} catch (e) {
 			console.error('获取产品数据失败:', e)
 			// 获取失败时保持空数组，显示空状态
 			this.productList = []
 			this.selectedProducts = []
+			// 标记数据已读取，在页面卸载时清除
+			this.dataLoaded = true
 		}
 	},
 	onUnload() {
@@ -195,6 +205,9 @@ import api from '@/utils/api.js'
 		}
 	},
 	computed: {
+		productListMaxHeight() {
+			return `calc(100vh - 44px - 100px - ${this.statusBarHeight}px)`
+		},
 		// 计算总金额（只计算选中的产品，包含数量）
 		calculatedTotal() {
 		    const total = this.productList.reduce((sum, p, index) => {
@@ -394,8 +407,8 @@ watch: {},
 
 <style lang="scss" scoped>
 .scheme-page {
-	background: #fff;
-	padding-bottom: 120rpx; // 为底部按钮留出空间
+	height: 100vh;
+	background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);
 }
 
 /* 自定义导航栏 */
@@ -432,12 +445,9 @@ watch: {},
 
 /* 内容区域 */
 .content {
-	/* #ifdef H5 */
-	height: calc(100vh - 88rpx - 200rpx); /* H5环境下减去导航栏高度 */
-	/* #endif */
-	/* #ifdef MP-WEIXIN */
-	height: calc(100vh - 200rpx); /* 小程序环境下使用100% */
-	/* #endif */
+	height: calc(100vh - 88rpx - 110px); /* H5环境下减去导航栏高度 */
+	background: #fff;
+	border-radius: 10px
 }
 
 /* 产品列表 */
@@ -659,7 +669,6 @@ watch: {},
 	bottom: 0;
 	left: 0;
 	right: 0;
-	background-color: #f0f0f0;
 	box-shadow: 0 -16rpx 24rpx rgba(224, 224, 224, 0.15);
 	.bottom-actions{
 		box-shadow: 0 -16rpx 24rpx rgba(224, 224, 224, 0.15);

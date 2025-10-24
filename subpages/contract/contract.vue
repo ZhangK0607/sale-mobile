@@ -1,14 +1,8 @@
 <template>
 	<view class="contract-page">
-		<!-- <view class="navbar">
-			<view class="nav-left" @click="goBack">
-				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
-			</view>
-			<view class="nav-title">产品采购合同</view>
-			<view class="nav-right"></view>
-		</view> -->
+		<CustomNavbar title="产品采购合同" :showBack="true" />
 
-		<scroll-view scroll-y class="content">
+		<scroll-view scroll-y class="content"  :style="{height: productListMaxHeight}">
 			<view class="wrap">
 				<view class="paper">
 					<!-- <view class="header">
@@ -77,11 +71,13 @@
 <script>
 import api from '@/utils/api.js'
 import ShareModal from '@/components/ShareModal.vue'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
-       components: { ShareModal },
+	components: { ShareModal, CustomNavbar },
        data() {
 	       return {
+			   statusBarHeight: 0,
 		       contract: {},
 		       contentHtml: '',
 		       loading: true,
@@ -89,7 +85,14 @@ export default {
 		       shareModalLink: ''
 	       }
        },
+	   computed: {
+	   	   productListMaxHeight() {
+	   	   	   return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
+	   	   },
+       },
 	onLoad(options) {
+		const sys = uni.getSystemInfoSync()
+		this.statusBarHeight = sys.statusBarHeight || 20
 		try {
 			// 从本地存储获取合同数据
 			const storedData = uni.getStorageSync('contractData')
@@ -233,12 +236,18 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.contract-page { background: #fff; }
+.contract-page { 
+	height: 100vh;
+    background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);
+ }
 .navbar { display: flex; align-items: center; justify-content: space-between; height: 88rpx; padding: 0 32rpx; background: #fff; border-bottom: 1px solid #e4e7ed; position: fixed; top:0; left:0; right:0; z-index:1000; }
 .nav-left, .nav-right { width:60rpx; height:60rpx; display:flex; align-items:center; justify-content:center; }
 .nav-title { flex:1; text-align:center; font-size:32rpx; font-weight:600; color:#303133; }
-.content { height: calc(100vh - 88rpx); }
-.wrap { padding: 16rpx; }
+.content { 
+	border-radius: 10px;
+    overflow: hidden;
+ }
+.wrap { padding: 16rpx; background: #fff;}
 .paper { padding: 24rpx 0 55px 0; min-height: 600rpx; font-size: 26rpx;}
 .title { font-size: 36rpx; font-weight: 700; }
 .meta { display:flex; align-items:center; margin-bottom: 16rpx; color:#606266; font-size: 26rpx; }

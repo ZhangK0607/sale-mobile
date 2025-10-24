@@ -1,15 +1,8 @@
 <template>
 	<view class="ppt-page">
-		<!-- 顶部栏 -->
-		<!-- <view class="navbar">
-			<view class="nav-left" @click="goBack">
-				<u-icon name="arrow-left" color="#333" size="20"></u-icon>
-			</view>
-			<view class="nav-title">PPT</view>
-			<view class="nav-right"></view>
-		</view> -->
+		<CustomNavbar title="PPT预览" :showBack="true" :overflowHidden="false"/>
 
-		<scroll-view scroll-y class="content">
+		<scroll-view scroll-y class="content" :style="{height: productListMaxHeight}">
 			<view class="ppt-container">
 				<view v-if="loading" class="loading">正在生成PPT...</view>
 				<view v-else>
@@ -38,11 +31,13 @@
 <script>
 import api from '@/utils/api.js'
 import ShareModal from '@/components/ShareModal.vue'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
-	components: { ShareModal },
+	components: { ShareModal, CustomNavbar },
 	data() {
 		return {
+			statusBarHeight: 0,
 			imageUrls: [],
 			loading: true,
 			downloadedFilePath: '', // 存储已下载的文件路径
@@ -67,7 +62,14 @@ export default {
 			imageUrl: ''
 		}
 	},
+	computed: {
+		productListMaxHeight() {
+			return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
+		},
+    },
 	onLoad(options) {
+		const sys = uni.getSystemInfoSync()
+		this.statusBarHeight = sys.statusBarHeight || 20
 		// 从本地存储获取产品数据并请求生成PPT
 		try {
 			const storedProducts = uni.getStorageSync('pptProducts')
@@ -363,7 +365,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.ppt-page { background: #fff; }
+.ppt-page { background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);}
 .navbar {
 	display: flex; align-items: center; justify-content: space-between;
 	height: 88rpx; padding: 0 32rpx; background: #fff; border-bottom: 1px solid #e4e7ed;
@@ -371,8 +373,11 @@ export default {
 }
 .nav-left, .nav-right { width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; }
 .nav-title { flex: 1; text-align: center; font-size: 32rpx; font-weight: 600; color: #303133; }
-.content { height: calc(100vh - 88rpx); }
-.ppt-container { padding: 16rpx; padding-bottom: 55px;}
+.content { 
+	border-radius: 10px;
+    overflow: hidden;
+ }
+.ppt-container { padding: 16rpx;}
 .loading, .empty { text-align: center; color: #909399; padding: 32rpx 0; }
 .slides { display: flex; flex-direction: column; gap: 16rpx; }
 .slide { width: 100%; border-radius: 12rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,.06); background: #f7f8fa; }

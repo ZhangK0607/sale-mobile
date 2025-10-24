@@ -1,17 +1,8 @@
 <template>
     <view class="quotation-page">
-        <!-- 自定义导航栏 -->
-        <!-- <view class="navbar">
-            <view class="nav-left" @click="goBack">
-                <u-icon name="arrow-left" color="#333" size="20"></u-icon>
-            </view>
-            <view class="nav-title">报价单</view>
-            <view class="nav-right">
-                <u-icon name="close" color="#333" size="20" @click="goBack"></u-icon>
-            </view>
-        </view> -->
+        <CustomNavbar title="报价单" :showBack="true" />
 
-        <scroll-view scroll-y class="content">
+        <scroll-view scroll-y class="content" :style="{height: productListMaxHeight}">
             <view class="quotation-container">
                 <!-- 报价单头部 -->
                 <view class="header-section">
@@ -109,11 +100,13 @@
 <script>
 import api from '@/utils/api.js'
 import ShareModal from '@/components/ShareModal.vue'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
-    components: { ShareModal },
+    components: { ShareModal, CustomNavbar },
     data() {
         return {
+            statusBarHeight: 0,
             quotationData: {
                 sellerInfo: {},
                 products: [],
@@ -128,7 +121,14 @@ export default {
             shareModalLink: ''
         }
     },
+    computed: {
+		productListMaxHeight() {
+			return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
+		},
+    },
     onLoad(options) {
+        const sys = uni.getSystemInfoSync()
+		this.statusBarHeight = sys.statusBarHeight || 20
         // 从本地存储获取报价单数据
         try {
             const storedQuotationData = uni.getStorageSync('quotationData')
@@ -278,7 +278,8 @@ export default {
 
 <style lang="scss" scoped>
 .quotation-page {
-    background: #f5f5f5;
+    height: 100vh;
+    background: linear-gradient(180deg, #DFEFFF 0%, #F2F5F8 100%);
     // min-height: 100vh;
 }
 
@@ -296,6 +297,10 @@ export default {
     left: 0;
     right: 0;
     z-index: 1000;
+}
+.content{
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 .nav-left,
@@ -315,15 +320,10 @@ export default {
     color: #303133;
 }
 
-/* 内容区域 */
-.content {
-    height: calc(100vh - 88rpx);
-}
-
 .quotation-container {
     padding: 24rpx;
     background-color: #fff;
-    padding-bottom: 55px;
+    border-radius: 10px;
 }
 
 .header-section {

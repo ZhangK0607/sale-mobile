@@ -1,5 +1,8 @@
 <template>
 	<view class="page">
+		<!-- 自定义顶部导航栏 -->
+		<CustomNavbar title="AI智能销售助手" :overflowHidden="false"/>
+
 		<!-- <u-navbar title="AI智能销售助手" placeholder :autoBack="false">
 			<template #right>
 				<u-icon name="more-dot-fill" size="20"></u-icon>
@@ -163,7 +166,7 @@
 			</view>
 			
 			<!-- 产品列表 -->
-			<scroll-view v-else scroll-y class="product-list-scroll">
+			<scroll-view v-else scroll-y class="product-list-scroll" :style="{maxHeight: productListMaxHeight}">
 				<view class="product-list">
 					<view 
 						v-for="(product, index) in recommendProducts" 
@@ -211,11 +214,14 @@
 </template>
 
 <script>
-	import api from '@/utils/api.js'
-	
+import api from '@/utils/api.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
+
 	export default {
+		components: { CustomNavbar },
 		data() {
 			return {
+				statusBarHeight: 0,
 				description: '',
 				// budget: '', // 实际的预算值
 				productCount: '',
@@ -250,6 +256,8 @@
 			}
 		},
 		onLoad() {
+			const sys = uni.getSystemInfoSync()
+			this.statusBarHeight = sys.statusBarHeight || 20
 			// 页面加载时获取数据
 			this.fetchIndustryTypes()
 			this.fetchAllLabels()
@@ -260,6 +268,16 @@
 			// #ifdef MP-WEIXIN
 			this.ensureRecordPermission()
 			// #endif
+		},
+		computed: {
+			productListMaxHeight() {
+				// #ifdef MP-WEIXIN
+				return `calc(100vh - 350px - ${this.statusBarHeight}px)`
+				// #endif
+				// #ifdef H5
+				return `calc(100vh - 345px - ${this.statusBarHeight}px - 50px)`
+				// #endif
+			}
 		},
 		methods: {
 			focusTextarea() {
@@ -702,7 +720,7 @@
 		z-index: 1;
 		padding: 0 24rpx;
 		/* #ifdef H5 */
-		height: calc(100vh - 94px); /* H5环境下减去导航栏高度 */
+		height: calc(100vh - 50px); /* H5环境下减去导航栏高度 */
 		/* #endif */
 		/* #ifdef MP-WEIXIN */
 		height: 100vh; /* 小程序环境下使用100% */
@@ -912,10 +930,12 @@
 	/* 产品列表滚动容器 */
 	.product-list-scroll {
 		/* #ifdef H5 */
-		max-height: calc(100vh - 345px - 50px); /* H5环境下减去导航栏高度 */
+		/* max-height: calc(100vh - 345px - 50px);  */
+		/* H5环境下减去导航栏高度 */
 		/* #endif */
 		/* #ifdef MP-WEIXIN */
-		max-height: calc(100vh - 307px); /* 小程序环境下使用100% */
+		/* max-height: calc(100vh - 370px);  */
+		/* 小程序环境下使用100% */
 		/* #endif */
 		width: 100%;
 	}
