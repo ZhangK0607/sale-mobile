@@ -39,7 +39,6 @@
               cursor-color="#007aff"
               @input="onInput($event, 'tenantName')"
               @blur="onBlur($event, 'tenantName')"
-              @focus="onFocus($event, 'tenantName')"
               class="uni-input"
             />
           </view>
@@ -57,7 +56,6 @@
               cursor-color="#007aff"
               @input="onInput($event, 'username')"
               @blur="onBlur($event, 'username')"
-              @focus="onFocus($event, 'username')"
               class="uni-input"
             />
           </view>
@@ -65,23 +63,27 @@
         
             <!-- 密码 -->
         <u-form-item label="密码" prop="password" class="form-item">
-          <u-input 
-            v-model="formData.password" 
-            type="text"
-            :password="!showPassword"
-            placeholder="请输入密码"
-            cursor-color="#007aff"
-            :passwordVisibilityToggle="false"
-          >
-            <template #suffix>
+          <view class="extend-class password-wrapper" @tap="handleWrapTap('password')">
+            <input 
+              v-model="formData.password" 
+              :disabled="inputStates.password.disabled"
+              :focus="inputStates.password.focus"
+              :password="!showPassword"
+              placeholder="请输入密码"
+              placeholder-class="title_input"
+              cursor-color="#007aff"
+              @input="onInput($event, 'password')"
+              @blur="onBlur($event, 'password')"
+              class="uni-input password-input"
+            />
+            <view class="password-icon" @click="showPassword = !showPassword">
               <u-icon
                 :name="showPassword ? 'eye-off' : 'eye-fill'"
                 size="18"
                 color="#909399"
-                @click="showPassword = !showPassword"
               ></u-icon>
-            </template>
-          </u-input>
+            </view>
+          </view>
         </u-form-item>
       </u-form>
       
@@ -127,6 +129,10 @@ export default {
           focus: false
         },
         username: {
+          disabled: false,
+          focus: false
+        },
+        password: {
           disabled: false,
           focus: false
         }
@@ -185,6 +191,7 @@ export default {
     if (this.isIOS) {
       this.inputStates.tenantName.disabled = true
       this.inputStates.username.disabled = true
+      this.inputStates.password.disabled = true
     }
   },
   
@@ -197,6 +204,7 @@ export default {
     },
     
     onBlur(event, field) {
+      console.log('onBlur', field)
       if (this.isIOS) {
         this.inputStates[field].disabled = true
         this.inputStates[field].focus = false
@@ -204,12 +212,8 @@ export default {
       // 触发表单校验
       this.$refs.loginForm.validateField(field)
     },
-    
-    onFocus(event, field) {
-      // 可以添加聚焦时的处理逻辑
-    },
-    
     handleWrapTap(field) {
+      console.log('handleWrapTap', field)
       if (this.isIOS) {
         this.inputStates[field].disabled = false
         setTimeout(() => {
@@ -313,7 +317,6 @@ export default {
         const tenantResponse = await api.user.getTenantIdByName(this.formData.tenantName)
         
         if (!tenantResponse.data) {
-          uni.hideLoading()
           uni.showToast({
             title: '企业ID不存在，请检查输入',
             icon: 'none'
@@ -360,7 +363,6 @@ export default {
             }
           } catch (error) {
             console.error('获取用户权限信息失败:', error)
-            uni.hideLoading()
             // 权限信息获取失败不影响登录流程
           }
           
@@ -375,7 +377,7 @@ export default {
         
       } catch (error) {
         console.error('登录失败:', error)
-        uni.hideLoading()
+        // uni.hideLoading()
         // 错误提示已在request.js中处理
       } finally {
         this.loading = false
@@ -446,12 +448,21 @@ export default {
   box-sizing: border-box;
 }
 
+.password-wrapper {
+  position: relative;
+  padding-right: 40px !important; /* 为图标预留空间 */
+}
+
 .uni-input {
   width: 100%;
   height: 35px;
   line-height: 35px;
   font-size: 14px;
   color: #333;
+}
+
+.password-input {
+  padding-right: 0 !important; /* 密码输入框不需要额外的右内边距 */
 }
 
 .password-icon {
