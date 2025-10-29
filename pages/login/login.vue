@@ -35,6 +35,7 @@
               :disabled="inputStates.tenantName.disabled"
               :focus="inputStates.tenantName.focus"
               placeholder="请输入企业唯一ID"
+              placeholder-class="title_input"
               cursor-color="#007aff"
               @input="onInput($event, 'tenantName')"
               @blur="onBlur($event, 'tenantName')"
@@ -52,6 +53,7 @@
               :disabled="inputStates.username.disabled"
               :focus="inputStates.username.focus"
               placeholder="请输入用户名"
+              placeholder-class="title_input"
               cursor-color="#007aff"
               @input="onInput($event, 'username')"
               @blur="onBlur($event, 'username')"
@@ -459,12 +461,12 @@ export default {
   transform: translateY(-50%);
   z-index: 1;
 }
-
-/* 设置placeholder颜色 */
 ::v-deep .uni-input-placeholder {
     color: #c0c4cc !important;
 }
-
+::v-deep .title_input{
+  color: #c0c4cc;
+}
 /* 检查登录状态loading样式 */
 .checking-loading {
   display: flex;
