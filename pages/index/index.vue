@@ -263,6 +263,15 @@ import CustomNavbar from '@/components/CustomNavbar.vue'
 			this.fetchAllLabels()
 			this.initVoiceInput()
 		},
+		onReady() {
+			// #ifdef MP-WEIXIN
+			// 确保分享菜单显示
+			wx.showShareMenu({
+				withShareTicket: true,
+				menus: ['shareAppMessage', 'shareTimeline']
+			})
+			// #endif
+		},
 		onShow() {
 			// 仅在小程序端检查录音权限
 			// #ifdef MP-WEIXIN

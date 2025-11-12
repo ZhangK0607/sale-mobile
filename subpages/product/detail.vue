@@ -146,6 +146,37 @@ export default {
 			})
 		}
 	},
+	
+	// 页面加载完成后显示分享按钮
+	onReady() {
+		// #ifdef MP-WEIXIN
+		// 确保分享菜单显示
+		wx.showShareMenu({
+			withShareTicket: true,
+			menus: ['shareAppMessage', 'shareTimeline']
+		})
+		// #endif
+	},
+	
+	// 配置分享功能 - 分享当前产品
+	onShareAppMessage(res) {
+		const shareConfig = {
+			title: this.productInfo.name ? `${this.productInfo.name} - AI智能销售助手推荐` : 'AI智能销售助手 - 产品详情',
+			path: `/subpages/product/detail?id=${this.productId}`,
+			imageUrl: this.productInfo.logo || '/static/defaultPro.png'
+		}
+		return shareConfig
+	},
+	
+	// 配置分享到朋友圈
+	onShareTimeline() {
+		const shareConfig = {
+			title: this.productInfo.name ? `${this.productInfo.name} - AI智能销售助手推荐` : 'AI智能销售助手 - 产品详情',
+			query: `id=${this.productId}`,
+			imageUrl: this.productInfo.logo || '/static/defaultPro.png'
+		}
+		return shareConfig
+	},
 	methods: {
 		goBack() {
 			uni.navigateBack()

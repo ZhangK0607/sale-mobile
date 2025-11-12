@@ -49,6 +49,16 @@ export default {
     this.loadUserInfo()
   },
   
+  onReady() {
+    // #ifdef MP-WEIXIN
+    // 确保分享菜单显示
+    wx.showShareMenu({
+      withShareTicket: true,
+      menus: ['shareAppMessage', 'shareTimeline']
+    })
+    // #endif
+  },
+  
   methods: {
     // 检查登录状态
     checkLoginStatus() {

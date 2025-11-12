@@ -16,6 +16,28 @@
 			console.log('App Hide')
 		},
 		
+		// 全局分享配置 - 所有页面默认都可以分享
+		onShareAppMessage(options) {
+			// options.from: 分享来源 'button'(页面内转发按钮) 或 'menu'(右上角转发菜单)
+			// options.target: 如果from是button，则target是触发分享的button
+			// options.webViewUrl: 如果页面包含webview，则返回webview的url
+			
+			return {
+				title: 'AI智能销售助手 - 智能推荐最适合您的产品',
+				path: '/pages/index/index', // 默认分享到首页
+				imageUrl: '/static/share-cover.png' // 自定义分享图片，建议尺寸 5:4
+			}
+		},
+		
+		// 全局分享到朋友圈配置
+		onShareTimeline(options) {
+			return {
+				title: 'AI智能销售助手 - 智能推荐最适合您的产品',
+				query: '', // 自定义页面路径中携带的参数
+				imageUrl: '/static/share-cover.png'
+			}
+		},
+		
 		methods: {
 			// 检查登录状态
 			checkLoginStatus() {

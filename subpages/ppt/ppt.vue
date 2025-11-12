@@ -46,22 +46,6 @@ export default {
 		}
 	},
 	
-	// 支持分享功能
-	onShareAppMessage(res) {
-		if (res.from === 'button') {
-			// 来自页面内分享按钮
-			return {
-				title: 'PPT产品方案演示文稿',
-				path: `/pages/ppt/ppt?products=${encodeURIComponent(JSON.stringify(this.currentProducts || []))}`,
-				imageUrl: this.imageUrls.length > 0 ? this.imageUrls[0] : ''
-			}
-		}
-		return {
-			title: 'AI智能销售助手 - PPT方案',
-			path: '/pages/index/index',
-			imageUrl: ''
-		}
-	},
 	computed: {
 		productListMaxHeight() {
 			return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
@@ -90,6 +74,15 @@ export default {
 			console.error('获取PPT产品数据失败:', e)
 		}
 	},
+	
+	// 禁用右上角分享功能
+	onReady() {
+		// #ifdef MP-WEIXIN
+		wx.hideShareMenu()
+		console.log('=== PPT预览页面已禁用分享 ===')
+		// #endif
+	},
+	
 	methods: {
 		goBack() {
 			uni.navigateBack()
