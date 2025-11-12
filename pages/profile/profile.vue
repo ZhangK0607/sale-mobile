@@ -59,6 +59,25 @@ export default {
     // #endif
   },
   
+  // 分享给好友
+  onShareAppMessage(options) { 
+    const shareConfig = {
+      title: 'AI智能销售助手 - 智能推荐最适合您的产品',
+      path: '/pages/index/index',
+      imageUrl: '/static/share.png'
+    }
+    return shareConfig
+  },
+  
+  // 分享到朋友圈
+  onShareTimeline() {
+    const shareConfig = {
+      title: 'AI智能销售助手 - 智能推荐最适合您的产品',
+      imageUrl: '/static/share.png'
+    }
+    return shareConfig
+  },
+  
   methods: {
     // 检查登录状态
     checkLoginStatus() {
