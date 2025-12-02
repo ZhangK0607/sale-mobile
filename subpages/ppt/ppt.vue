@@ -28,331 +28,328 @@
 	</view>
 </template>
 
-<script>
+<script setup>
 import api from '@/utils/api.js'
 import ShareModal from '@/components/ShareModal.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { ref, computed, onMounted } from 'vue'
 
-export default {
-	components: { ShareModal, CustomNavbar },
-	data() {
-		return {
-			statusBarHeight: 0,
-			imageUrls: [],
-			loading: true,
-			downloadedFilePath: '', // 存储已下载的文件路径
-			shareModalVisible: false,
-			shareModalLink: ''
+// 响应式数据
+const statusBarHeight = ref(0)
+const imageUrls = ref([])
+const loading = ref(true)
+const downloadedFilePath = ref('') // 存储已下载的文件路径
+const shareModalVisible = ref(false)
+const shareModalLink = ref('')
+const currentProducts = ref([]) // 保存产品数据用于分享
+
+// 计算属性
+const productListMaxHeight = computed(() => {
+	return `calc(100vh - 61px - 44px - ${statusBarHeight.value}px)`
+})
+
+// 生命周期钩子
+onMounted(() => {
+	const sys = uni.getSystemInfoSync()
+	statusBarHeight.value = sys.statusBarHeight || 20
+	// 从本地存储获取产品数据并请求生成PPT
+	try {
+		const storedProducts = uni.getStorageSync('pptProducts')
+		if (!storedProducts) {
+			loading.value = false
+			console.log('未找到PPT产品数据')
+			return
 		}
-	},
-	
-	computed: {
-		productListMaxHeight() {
-			return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
-		},
-    },
-	onLoad(options) {
-		const sys = uni.getSystemInfoSync()
-		this.statusBarHeight = sys.statusBarHeight || 20
-		// 从本地存储获取产品数据并请求生成PPT
-		try {
-			const storedProducts = uni.getStorageSync('pptProducts')
-			if (!storedProducts) {
-				this.loading = false
-				console.log('未找到PPT产品数据')
-				return
-			}
-			
-			console.log('从本地存储获取的PPT产品数据:', storedProducts)
-			this.currentProducts = storedProducts // 保存产品数据用于分享
-			this.generate(storedProducts)
-			
-			// 清除存储的数据
-			uni.removeStorageSync('pptProducts')
-		} catch (e) {
-			this.loading = false
-			console.error('获取PPT产品数据失败:', e)
-		}
-	},
+		
+		console.log('从本地存储获取的PPT产品数据:', storedProducts)
+		currentProducts.value = storedProducts // 保存产品数据用于分享
+		generate(storedProducts)
+		
+		// 清除存储的数据
+		uni.removeStorageSync('pptProducts')
+	} catch (e) {
+		loading.value = false
+		console.error('获取PPT产品数据失败:', e)
+	}
 	
 	// 禁用右上角分享功能
-	onReady() {
-		// #ifdef MP-WEIXIN
-		wx.hideShareMenu()
-		console.log('=== PPT预览页面已禁用分享 ===')
-		// #endif
-	},
-	
-	methods: {
-		goBack() {
-			uni.navigateBack()
-		},
-		async downloadPdf() {
-			try {
-				if (!this.imageUrls || this.imageUrls.length === 0) {
-					uni.showToast({ title: '请先生成PPT', icon: 'none' })
-					return
-				}
-				uni.showLoading({ title: '打包下载中...', mask: true })
-				// 将当前已展示图片的URL作为下载依据传给后端（若后端需要产品原始数据，可改为透传产品列表）
-				const res = await api.ppt.download(this.imageUrls)
-				const arrayBuffer = res?.data || res
-				if (!arrayBuffer) throw new Error('未获取到文件数据')
+	// #ifdef MP-WEIXIN
+	wx.hideShareMenu()
+	console.log('=== PPT预览页面已禁用分享 ===')
+	// #endif
+})
 
-                // #ifdef H5
-                    const blob = new Blob([arrayBuffer])
-					const url = window.URL.createObjectURL(blob)
-					const a = document.createElement('a')
-					a.href = url
-					a.download = `产品方案演示_${Date.now()}.pptx`
-					document.body.appendChild(a)
-					a.click()
-					document.body.removeChild(a)
-					window.URL.revokeObjectURL(url)
-                // #endif
+// 方法
+const goBack = () => {
+	uni.navigateBack()
+}
 
-                // #ifdef MP-WEIXIN
-                try {
-                    const filePath = `${wx.env.USER_DATA_PATH}/产品方案演示_${Date.now()}.pptx`
-                    const fs = wx.getFileSystemManager()
-                    fs.writeFileSync(filePath, arrayBuffer)
-                    uni.openDocument({
-                        filePath,
-                        fileType: 'pptx',
-                        showMenu: true,
-                        success: () => {},
-                        fail: () => {
-                            uni.showToast({ title: '打开PPT失败', icon: 'none' })
-                        }
-                    })
-                } catch (err) {
-                    uni.showToast({ title: '保存文件失败', icon: 'none' })
+const downloadPdf = async () => {
+	try {
+		if (!imageUrls.value || imageUrls.value.length === 0) {
+			uni.showToast({ title: '请先生成PPT', icon: 'none' })
+			return
+		}
+		uni.showLoading({ title: '打包下载中...', mask: true })
+		// 将当前已展示图片的URL作为下载依据传给后端（若后端需要产品原始数据，可改为透传产品列表）
+		const res = await api.ppt.download(imageUrls.value)
+		const arrayBuffer = res?.data || res
+		if (!arrayBuffer) throw new Error('未获取到文件数据')
+
+        // #ifdef H5
+            const blob = new Blob([arrayBuffer])
+			const url = window.URL.createObjectURL(blob)
+			const a = document.createElement('a')
+			a.href = url
+			a.download = `产品方案演示_${Date.now()}.pptx`
+			document.body.appendChild(a)
+			a.click()
+			document.body.removeChild(a)
+			window.URL.revokeObjectURL(url)
+        // #endif
+
+        // #ifdef MP-WEIXIN
+        try {
+            const filePath = `${wx.env.USER_DATA_PATH}/产品方案演示_${Date.now()}.pptx`
+            const fs = wx.getFileSystemManager()
+            fs.writeFileSync(filePath, arrayBuffer)
+            uni.openDocument({
+                filePath,
+                fileType: 'pptx',
+                showMenu: true,
+                success: () => {},
+                fail: () => {
+                    uni.showToast({ title: '打开PPT失败', icon: 'none' })
                 }
-                // #endif
+            })
+        } catch (err) {
+            uni.showToast({ title: '保存文件失败', icon: 'none' })
+        }
+        // #endif
 
-                // #ifdef APP-PLUS
-					const fileName = `产品方案演示_${Date.now()}.pptx`
-					plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
-						fs.root.getFile(fileName, { create: true }, (entry) => {
-							entry.createWriter((writer) => {
-								writer.write(arrayBuffer)
-								uni.showToast({ title: '已保存到本地', icon: 'success' })
-							})
-						})
-					})
-                // #endif
-			} catch (e) {
-				uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
-			} finally {
-				uni.hideLoading()
-			}
-		},
-		async generate(products) {
-			try {
-				uni.showLoading({ title: '生成PPT中...', mask: true })
-				const res = await api.ppt.generate(products)
-				if (res.code === 0 && Array.isArray(res.data)) {
-					this.imageUrls = res.data
-				} else if (res.data && Array.isArray(res.data.urls)) {
-					this.imageUrls = res.data.urls
-				}
-			} catch (e) {
-				uni.showToast({ title: '生成PPT失败', icon: 'none' })
-			} finally {
-				this.loading = false
-				uni.hideLoading()
-			}
-		},
-		preview(startIdx) {
-			uni.previewImage({
-				urls: this.imageUrls,
-				current: this.imageUrls[startIdx]
-			})
-		},
-		
-		// 分享给朋友
-		async shareToFriend() {
-			try {
-				if (!this.imageUrls || this.imageUrls.length === 0) {
-					uni.showToast({ title: '请先生成PPT', icon: 'none' })
-					return
-				}
-
-				uni.showLoading({ title: '准备分享...', mask: true })
-				
-				// 1. 先下载PPT文件到本地
-				await this.downloadPPTFile()
-				
-				// 2. 显示分享选项
-				uni.showActionSheet({
-					itemList: ['分享小程序', '分享到微信群', '分享PPT文件'],
-					success: async (res) => {
-						switch (res.tapIndex) {
-							case 0:
-								// 分享小程序页面
-								this.shareAppMessage()
-								break
-							case 1:
-								// 分享到微信群
-								this.shareAppMessage()
-								break
-							case 2:
-								// 分享PPT文件
-								await this.sharePPTFile()
-								break
-						}
-					}
+        // #ifdef APP-PLUS
+		const fileName = `产品方案演示_${Date.now()}.pptx`
+		plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
+			fs.root.getFile(fileName, { create: true }, (entry) => {
+				entry.createWriter((writer) => {
+					writer.write(arrayBuffer)
+					uni.showToast({ title: '已保存到本地', icon: 'success' })
 				})
-				
-			} catch (error) {
-				console.error('分享失败:', error)
-				uni.showToast({ title: '分享准备失败', icon: 'none' })
-			} finally {
-				uni.hideLoading()
-			}
-		},
+			})
+		})
+        // #endif
+	} catch (e) {
+		uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
 
-		// 直接生成分享链接（调用后端 sharePPT 接口）
-		async sharePPTLink() {
-			try {
-				if (!this.imageUrls || this.imageUrls.length === 0) {
-					uni.showToast({ title: '请先生成PPT', icon: 'none' })
-					return
-				}
-				uni.showLoading({ title: '生成分享链接...', mask: true })
-				const res = await api.ppt.sharePPT(this.imageUrls, true)
-				const url = res?.data
-				if (!url) {
-					uni.showToast({ title: '未获取到分享链接', icon: 'none' })
-					return
-				}
-				if (uni.setClipboardData) {
-					uni.setClipboardData({ data: url, success: () => {} })
-				}
-				this.shareModalLink = url
-				this.shareModalVisible = true
-			} catch (e) {
-				uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
-			} finally {
-				uni.hideLoading()
-			}
-		},
+const generate = async (products) => {
+	try {
+		uni.showLoading({ title: '生成PPT中...', mask: true })
+		const res = await api.ppt.generate(products)
+		if (res.code === 0 && Array.isArray(res.data)) {
+			imageUrls.value = res.data
+		} else if (res.data && Array.isArray(res.data.urls)) {
+			imageUrls.value = res.data.urls
+		}
+	} catch (e) {
+		uni.showToast({ title: '生成PPT失败', icon: 'none' })
+	} finally {
+		loading.value = false
+		uni.hideLoading()
+	}
+}
+
+const preview = (startIdx) => {
+	uni.previewImage({
+		urls: imageUrls.value,
+		current: imageUrls.value[startIdx]
+	})
+}
+
+// 分享给朋友
+const shareToFriend = async () => {
+	try {
+		if (!imageUrls.value || imageUrls.value.length === 0) {
+			uni.showToast({ title: '请先生成PPT', icon: 'none' })
+			return
+		}
+
+		uni.showLoading({ title: '准备分享...', mask: true })
 		
-		// 下载PPT文件到本地临时目录
-		async downloadPPTFile() {
-			try {
-				const res = await api.ppt.download(this.imageUrls)
-				const arrayBuffer = res?.data || res
+		// 1. 先下载PPT文件到本地
+		await downloadPPTFile()
+		
+		// 2. 显示分享选项
+		uni.showActionSheet({
+			itemList: ['分享小程序', '分享到微信群', '分享PPT文件'],
+			success: async (res) => {
+				switch (res.tapIndex) {
+					case 0:
+						// 分享小程序页面
+						shareAppMessage()
+						break
+					case 1:
+						// 分享到微信群
+						shareAppMessage()
+						break
+					case 2:
+						// 分享PPT文件
+						await sharePPTFile()
+						break
+				}
+			}
+		})
+		
+	} catch (error) {
+		console.error('分享失败:', error)
+		uni.showToast({ title: '分享准备失败', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
+
+// 直接生成分享链接（调用后端 sharePPT 接口）
+const sharePPTLink = async () => {
+	try {
+		if (!imageUrls.value || imageUrls.value.length === 0) {
+			uni.showToast({ title: '请先生成PPT', icon: 'none' })
+			return
+		}
+		uni.showLoading({ title: '生成分享链接...', mask: true })
+		const res = await api.ppt.sharePPT(imageUrls.value, true)
+		const url = res?.data
+		if (!url) {
+			uni.showToast({ title: '未获取到分享链接', icon: 'none' })
+			return
+		}
+		if (uni.setClipboardData) {
+			uni.setClipboardData({ data: url, success: () => {} })
+		}
+		shareModalLink.value = url
+		shareModalVisible.value = true
+	} catch (e) {
+		uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
+
+// 下载PPT文件到本地临时目录
+const downloadPPTFile = async () => {
+	try {
+		const res = await api.ppt.download(imageUrls.value)
+		const arrayBuffer = res?.data || res
+		
+		if (!arrayBuffer) throw new Error('未获取到文件数据')
+		
+		// 小程序环境下保存到临时文件
+		if (uni.getSystemInfoSync().platform !== 'h5') {
+			const fileName = `产品方案演示_${Date.now()}.pptx`
+			const base64 = uni.arrayBufferToBase64(arrayBuffer)
+			const fs = wx.getFileSystemManager()
+			
+			// 使用Promise包装异步文件操作
+			const tempFilePath = await new Promise((resolve, reject) => {
+				// 获取临时文件路径
+				let filePath = ''
 				
-				if (!arrayBuffer) throw new Error('未获取到文件数据')
+				// 方案1: 使用系统临时目录
+				if (wx.env && wx.env.USER_DATA_PATH) {
+					filePath = `${wx.env.USER_DATA_PATH}/${fileName}`
+					console.log('使用用户数据目录:', filePath)
+				} else {
+					// 方案2: 使用wxfile协议创建临时文件
+					filePath = `wxfile://tmp_${Date.now()}_${fileName}`
+					console.log('使用wxfile临时路径:', filePath)
+				}
 				
-				// 小程序环境下保存到临时文件
-				if (uni.getSystemInfoSync().platform !== 'h5') {
-					const fileName = `产品方案演示_${Date.now()}.pptx`
-					const base64 = uni.arrayBufferToBase64(arrayBuffer)
-					const fs = wx.getFileSystemManager()
-					
-					// 使用Promise包装异步文件操作
-					const tempFilePath = await new Promise((resolve, reject) => {
-						// 获取临时文件路径
-						let filePath = ''
+				// 异步写入文件
+				fs.writeFile({
+					filePath: filePath,
+					data: base64,
+					encoding: 'base64',
+					success: () => {
+						console.log('PPT文件写入成功:', filePath)
+						resolve(filePath)
+					},
+					fail: (error) => {
+						console.log('writeFile失败，尝试备用方案:', error)
 						
-						// 方案1: 使用系统临时目录
-						if (wx.env && wx.env.USER_DATA_PATH) {
-							filePath = `${wx.env.USER_DATA_PATH}/${fileName}`
-							console.log('使用用户数据目录:', filePath)
-						} else {
-							// 方案2: 使用wxfile协议创建临时文件
-							filePath = `wxfile://tmp_${Date.now()}_${fileName}`
-							console.log('使用wxfile临时路径:', filePath)
-						}
-						
-						// 异步写入文件
+						// 备用方案: 直接使用相对路径
+						const backupPath = fileName
 						fs.writeFile({
-							filePath: filePath,
+							filePath: backupPath,
 							data: base64,
 							encoding: 'base64',
 							success: () => {
-								console.log('PPT文件写入成功:', filePath)
-								resolve(filePath)
+								console.log('备用路径写入成功:', backupPath)
+								resolve(backupPath)
 							},
-							fail: (error) => {
-								console.log('writeFile失败，尝试备用方案:', error)
-								
-								// 备用方案: 直接使用相对路径
-								const backupPath = fileName
-								fs.writeFile({
-									filePath: backupPath,
-									data: base64,
-									encoding: 'base64',
-									success: () => {
-										console.log('备用路径写入成功:', backupPath)
-										resolve(backupPath)
-									},
-									fail: (backupError) => {
-										console.error('所有写入方案均失败:', backupError)
-										reject(new Error('无法保存PPT文件到本地'))
-									}
-								})
+							fail: (backupError) => {
+								console.error('所有写入方案均失败:', backupError)
+								reject(new Error('无法保存PPT文件到本地'))
 							}
 						})
-					})
-					
-					this.downloadedFilePath = tempFilePath
-					console.log('PPT文件最终保存路径:', tempFilePath)
-				}
-				
-			} catch (error) {
-				console.error('下载PPT文件失败:', error)
-				throw error
-			}
-		},
-		
-		// 分享小程序页面
-		shareAppMessage() {
-			uni.showShareMenu({
-				withShareTicket: true,
-				menus: ['shareAppMessage']
+					}
+				})
 			})
 			
-			// 触发分享
-			uni.showToast({
-				title: '请点击右上角分享',
-				icon: 'none'
-			})
-		},
-		
-		// 分享PPT文件
-		async sharePPTFile() {
-			try {
-				if (!this.downloadedFilePath) {
-					uni.showToast({ title: 'PPT文件未准备好', icon: 'none' })
-					return
-				}
-				
-				// 小程序环境下使用文件分享
-				if (typeof wx !== 'undefined' && wx.shareFileMessage) {
-					wx.shareFileMessage({
-						filePath: this.downloadedFilePath,
-						fileName: `产品方案演示_${Date.now()}.pptx`,
-						success: () => {
-							uni.showToast({ title: '分享成功', icon: 'success' })
-						},
-						fail: (error) => {
-							console.error('分享文件失败:', error)
-							uni.showToast({ title: '分享失败，请稍后重试', icon: 'none' })
-						}
-					})
-				} else {
-					// 其他平台的分享逻辑
-					uni.showToast({ title: '当前平台不支持文件分享', icon: 'none' })
-				}
-				
-			} catch (error) {
-				console.error('分享PPT文件失败:', error)
-				uni.showToast({ title: '分享失败', icon: 'none' })
-			}
+			downloadedFilePath.value = tempFilePath
+			console.log('PPT文件最终保存路径:', tempFilePath)
 		}
+		
+	} catch (error) {
+		console.error('下载PPT文件失败:', error)
+		throw error
+	}
+}
+
+// 分享小程序页面
+const shareAppMessage = () => {
+	uni.showShareMenu({
+		withShareTicket: true,
+		menus: ['shareAppMessage']
+	})
+	
+	// 触发分享
+	uni.showToast({
+		title: '请点击右上角分享',
+		icon: 'none'
+	})
+}
+
+// 分享PPT文件
+const sharePPTFile = async () => {
+	try {
+		if (!downloadedFilePath.value) {
+			uni.showToast({ title: 'PPT文件未准备好', icon: 'none' })
+			return
+		}
+		
+		// 小程序环境下使用文件分享
+		if (typeof wx !== 'undefined' && wx.shareFileMessage) {
+			wx.shareFileMessage({
+				filePath: downloadedFilePath.value,
+				fileName: `产品方案演示_${Date.now()}.pptx`,
+				success: () => {
+					uni.showToast({ title: '分享成功', icon: 'success' })
+				},
+				fail: (error) => {
+					console.error('分享文件失败:', error)
+					uni.showToast({ title: '分享失败，请稍后重试', icon: 'none' })
+				}
+			})
+		} else {
+			// 其他平台的分享逻辑
+			uni.showToast({ title: '当前平台不支持文件分享', icon: 'none' })
+		}
+		
+	} catch (error) {
+		console.error('分享PPT文件失败:', error)
+		uni.showToast({ title: '分享失败', icon: 'none' })
 	}
 }
 </script>

@@ -54,7 +54,7 @@
                                 <view class="table-cell">单价</view>
                                 <view class="table-cell">小计</view>
                             </view>
-                            <view v-for="(product, index) in quotationData.productInfo.products" :key="index"
+                            <view v-for="(product, index) in (quotationData.productInfo && quotationData.productInfo.products) || []" :key="index"
                                 class="table-row">
                                 <view class="table-cell">{{ index + 1 }}</view>
                                 <view class="table-cell product-name">{{ product.name }}</view>
@@ -97,181 +97,187 @@
     </view>
 </template>
 
-<script>
+<script setup>
 import api from '@/utils/api.js'
 import ShareModal from '@/components/ShareModal.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { ref, computed, onMounted } from 'vue'
 
-export default {
-    components: { ShareModal, CustomNavbar },
-    data() {
-        return {
-            statusBarHeight: 0,
-            quotationData: {
-                sellerInfo: {},
-                products: [],
-                totalPrice: 0,
-                orderNo: '',
-                createDay: '',
-                expireDay: '',
-                clause: ''
-            },
-            billingPeriod: '',
-            shareModalVisible: false,
-            shareModalLink: ''
+// 响应式数据
+const statusBarHeight = ref(0)
+const quotationData = ref({
+    sellerInfo: {},
+    productInfo: {
+        products: []
+    },
+    products: [],
+    totalPrice: 0,
+    orderNo: '',
+    createDay: '',
+    expireDay: '',
+    clause: ''
+})
+const billingPeriod = ref('')
+const shareModalVisible = ref(false)
+const shareModalLink = ref('')
+
+// 计算属性
+const productListMaxHeight = computed(() => {
+	return `calc(100vh - 61px - 44px - ${statusBarHeight.value}px)`
+})
+
+// 生命周期钩子
+onMounted(() => {
+    const sys = uni.getSystemInfoSync()
+	statusBarHeight.value = sys.statusBarHeight || 20
+    // 从本地存储获取报价单数据
+    try {
+        const storedQuotationData = uni.getStorageSync('quotationData')
+        const storedPeriod = uni.getStorageSync('quotationPeriod')
+        
+        if (storedQuotationData) {
+            quotationData.value = storedQuotationData
+            console.log('从本地存储获取的报价单数据:', quotationData.value)
+            
+            // 清除存储的数据
+            uni.removeStorageSync('quotationData')
+        } else {
+            console.log('未找到报价单数据')
         }
-    },
-    computed: {
-		productListMaxHeight() {
-			return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
-		},
-    },
-    onLoad(options) {
-        const sys = uni.getSystemInfoSync()
-		this.statusBarHeight = sys.statusBarHeight || 20
-        // 从本地存储获取报价单数据
+        
+        if (storedPeriod) {
+            billingPeriod.value = storedPeriod
+            uni.removeStorageSync('quotationPeriod')
+        }
+    } catch (e) {
+        console.error('获取报价单数据失败:', e)
+        uni.showToast({
+            title: '数据获取失败',
+            icon: 'none'
+        })
+    }
+})
+
+// 方法
+const goBack = () => {
+    uni.navigateBack()
+}
+
+const shareQuotation = async () => {
+    if (!quotationData.value.orderNo) {
+        uni.showToast({ title: '未获取到报价单编号', icon: 'none' })
+        return
+    }
+    try {
+        uni.showLoading({ title: '生成分享链接...', mask: true })
+        const res = await api.quotation.shareQuotationPdf({ orderNo:quotationData.value.orderNo, period: billingPeriod.value, isShare: true })
+        const url = res?.data
+        if (!url) {
+            uni.showToast({ title: '未获取到分享链接', icon: 'none' })
+            return
+        }
+        // 复制到剪贴板并展示
+        if (uni.setClipboardData) {
+            uni.setClipboardData({ data: url, success: () => {} })
+        }
+        shareModalLink.value = url
+        shareModalVisible.value = true
+    } catch (e) {
+        uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
+    } finally {
+        uni.hideLoading()
+    }
+}
+
+const periodUnit = (period) => {
+    const unitMap = { year: '年', season: '季', month: '月', disposable: '一次性' }
+    return unitMap[period] || '一次性'
+}
+
+// 格式化价格
+const formatPrice = (price) => {
+    if (typeof price === 'number') {
+        return price.toLocaleString()
+    }
+    return price || '-'
+}
+
+// 计算小计（兼容多种字段）
+const computeSubtotal = (p) => {
+    if (typeof p?.subtotalPrice === 'number') return p.subtotalPrice
+    if (typeof p?.subtotal === 'number') return p.subtotal
+    const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : 0
+    const unitPrice = typeof p?.price === 'number' ? p.price : 0
+    return unitPrice * quantity
+}
+
+// 格式化条款内容
+const formatClause = (clause) => {
+    if (!clause) return '暂无条款说明'
+    return clause.replace(/\/n/g, '\n')
+}
+
+// 下载PDF
+const downloadPdf = async () => {
+    if (!quotationData.value.orderNo) {
+        uni.showToast({
+            title: '未获取到报价单编号',
+            icon: 'none'
+        })
+        return
+    }
+
+    try {
+        uni.showLoading({ title: '生成PDF中...', mask: true })
+        // 请求文件流（arraybuffer）
+        const res = await api.quotation.downloadQuotationPdf(quotationData.value.orderNo, billingPeriod.value)
+        const arrayBuffer = res?.data || res
+        if (!arrayBuffer) throw new Error('未获取到文件数据')
+
+        // 保存到本地（各端处理）
+        // #ifdef H5
+            const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `报价单_${quotationData.value.orderNo}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            window.URL.revokeObjectURL(url)
+        // #endif
+
+        // #ifdef MP-WEIXIN
         try {
-            const storedQuotationData = uni.getStorageSync('quotationData')
-            const storedPeriod = uni.getStorageSync('quotationPeriod')
-            
-            if (storedQuotationData) {
-                this.quotationData = storedQuotationData
-                console.log('从本地存储获取的报价单数据:', this.quotationData)
-                
-                // 清除存储的数据
-                uni.removeStorageSync('quotationData')
-            } else {
-                console.log('未找到报价单数据')
-            }
-            
-            if (storedPeriod) {
-                this.billingPeriod = storedPeriod
-                uni.removeStorageSync('quotationPeriod')
-            }
-        } catch (e) {
-            console.error('获取报价单数据失败:', e)
-            uni.showToast({
-                title: '数据获取失败',
-                icon: 'none'
+            const filePath = `${wx.env.USER_DATA_PATH}/报价单_${quotationData.value.orderNo}.pdf`
+            const fs = wx.getFileSystemManager()
+            fs.writeFileSync(filePath, arrayBuffer)
+            uni.openDocument({
+                filePath,
+                fileType: 'pdf',
+                showMenu: true,
+                success: () => {},
+                fail: () => {
+                    uni.showToast({ title: '打开文档失败', icon: 'none' })
+                }
             })
+        } catch (err) {
+            uni.showToast({ title: '保存文件失败', icon: 'none' })
         }
-    },
-    methods: {
-        goBack() {
-            uni.navigateBack()
-        },
-        async shareQuotation() {
-            if (!this.quotationData.orderNo) {
-                uni.showToast({ title: '未获取到报价单编号', icon: 'none' })
-                return
-            }
-            try {
-                uni.showLoading({ title: '生成分享链接...', mask: true })
-                const res = await api.quotation.shareQuotationPdf({ orderNo:this.quotationData.orderNo, period: this.billingPeriod, isShare: true })
-                const url = res?.data
-                if (!url) {
-                    uni.showToast({ title: '未获取到分享链接', icon: 'none' })
-                    return
-                }
-                // 复制到剪贴板并展示
-                if (uni.setClipboardData) {
-                    uni.setClipboardData({ data: url, success: () => {} })
-                }
-                this.shareModalLink = url
-                this.shareModalVisible = true
-            } catch (e) {
-                uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
-            } finally {
-                uni.hideLoading()
-            }
-        },
-        periodUnit(period) {
-            const unitMap = { year: '年', season: '季', month: '月', disposable: '一次性' }
-            return unitMap[period] || '一次性'
-        },
-        // 格式化价格
-        formatPrice(price) {
-            if (typeof price === 'number') {
-                return price.toLocaleString()
-            }
-            return price || '-'
-        },
-        // 计算小计（兼容多种字段）
-        computeSubtotal(p) {
-            if (typeof p?.subtotalPrice === 'number') return p.subtotalPrice
-            if (typeof p?.subtotal === 'number') return p.subtotal
-            const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : 0
-            const unitPrice = typeof p?.price === 'number' ? p.price : 0
-            return unitPrice * quantity
-        },
-        // 格式化条款内容
-        formatClause(clause) {
-            if (!clause) return '暂无条款说明'
-            return clause.replace(/\/n/g, '\n')
-        },
-        // 下载PDF
-        async downloadPdf() {
-            if (!this.quotationData.orderNo) {
-                uni.showToast({
-                    title: '未获取到报价单编号',
-                    icon: 'none'
-                })
-                return
-            }
+        // #endif
 
-            try {
-                uni.showLoading({ title: '生成PDF中...', mask: true })
-                // 请求文件流（arraybuffer）
-                const res = await api.quotation.downloadQuotationPdf(this.quotationData.orderNo, this.billingPeriod)
-                const arrayBuffer = res?.data || res
-                if (!arrayBuffer) throw new Error('未获取到文件数据')
-
-                // 保存到本地（各端处理）
-                // #ifdef H5
-                    const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-                    const url = window.URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `报价单_${this.quotationData.orderNo}.pdf`
-                    document.body.appendChild(a)
-                    a.click()
-                    document.body.removeChild(a)
-                    window.URL.revokeObjectURL(url)
-                // #endif
-
-                // #ifdef MP-WEIXIN
-                try {
-                    const filePath = `${wx.env.USER_DATA_PATH}/报价单_${this.quotationData.orderNo}.pdf`
-                    const fs = wx.getFileSystemManager()
-                    fs.writeFileSync(filePath, arrayBuffer)
-                    uni.openDocument({
-                        filePath,
-                        fileType: 'pdf',
-                        showMenu: true,
-                        success: () => {},
-                        fail: () => {
-                            uni.showToast({ title: '打开文档失败', icon: 'none' })
-                        }
-                    })
-                } catch (err) {
-                    uni.showToast({ title: '保存文件失败', icon: 'none' })
-                }
-                // #endif
-
-                // 其他未适配平台统一提示
-                // #ifndef H5
-                // #ifndef MP-WEIXIN
-                // #ifndef APP-PLUS
-                uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
-                // #endif
-                // #endif
-                // #endif
-            } catch (e) {
-                uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
-            } finally {
-                uni.hideLoading()
-            }
-        }
+        // 其他未适配平台统一提示
+        // #ifndef H5
+        // #ifndef MP-WEIXIN
+        // #ifndef APP-PLUS
+        uni.showToast({ title: '当前端暂不支持自动下载', icon: 'none' })
+        // #endif
+        // #endif
+        // #endif
+    } catch (e) {
+        uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
+    } finally {
+        uni.hideLoading()
     }
 }
 </script>

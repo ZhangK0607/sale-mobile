@@ -33,7 +33,7 @@
 					placeholder="请描述您的需求，描述越详细，AI推荐越精准。可提及品牌、行业类型、数据条件等具体信息，获得更贴近场景的智能推荐产品" 
 					height="80" 
 					cursor-color="#007aff"
-					:selection-end="description.length"
+					:selection-end="(description || '').length"
 					:maxlength="800"
 					:disabled="isRecording">
 				</u-textarea>
@@ -156,7 +156,7 @@
 		</view>
 		
 		<!-- 推荐产品组合展示区域 -->
-		<view v-if="recommendProducts.length > 0 || isRecommendLoading" class="recommend-section">
+		<view v-if="(recommendProducts && recommendProducts.length > 0) || isRecommendLoading" class="recommend-section">
 			<view class="recommend-title">推荐产品组合</view>
 			
 			<!-- 加载状态 -->
@@ -190,7 +190,7 @@
 			</scroll-view>
 		</view>
 		
-		<movable-area v-if="recommendProducts.length > 0" style="position:fixed;right:20rpx;bottom:60px;height: 120px;width:120px;z-index:99999;">
+		<movable-area v-if="recommendProducts && recommendProducts.length > 0" style="position:fixed;right:20rpx;bottom:60px;height: 120px;width:120px;z-index:99999;">
 			<movable-view
 				direction="all"
 				:x="fabPos.x"
@@ -213,490 +213,531 @@
 	</view>
 </template>
 
-<script>
+<script setup>
+import { ref, reactive, computed, nextTick, getCurrentInstance, onMounted } from 'vue'
 import api from '@/utils/api.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 
-	export default {
-		components: { CustomNavbar },
-		data() {
-			return {
-				statusBarHeight: 0,
-				description: '',
-				// budget: '', // 实际的预算值
-				productCount: '',
-				typeLabels: [],
-				labels: [],
-				industryOptions: [],
-				tagOptions: [],
-				recommendProducts: [], // 推荐产品列表
-				isRecommendLoading: false, // 推荐加载状态
-				loadingText: '向量库搜索中...', // 加载文字
-				fabPattern: {
-					buttonColor: '#ffffff',
-					iconColor: '#606266'
-				},
-				// 语音输入相关
-				isRecording: false,
-				voiceInputSupported: false,
-				useNativeVoiceInput: false,
-				// 微信同声传译插件
-				wxAsrManager: null,
-				interimText: '',
-				fabPos: {
-				   x: 63, // 初始在区域中间
-				   y: 30
-				},
-				fabTemp: {
-				   x: 63,
-				   y: 30
-				},
-				fabDragging: false,
-				descTextareaFocus: false,
+// 获取当前组件实例，用于访问 $refs
+const { proxy } = getCurrentInstance()
+
+// 响应式数据
+const statusBarHeight = ref(0)
+const description = ref('')
+const des = ref('')
+const productCount = ref('')
+const typeLabels = ref([])
+const labels = ref([])
+const industryOptions = ref([])
+const tagOptions = ref([])
+const recommendProducts = ref([]) // 推荐产品列表
+const isRecommendLoading = ref(false) // 推荐加载状态
+const loadingText = ref('向量库搜索中...') // 加载文字
+const descTextareaFocus = ref(false)
+
+// 语音输入相关
+const isRecording = ref(false)
+const voiceInputSupported = ref(false)
+const useNativeVoiceInput = ref(false)
+const wxAsrManager = ref(null)
+const interimText = ref('')
+
+// 悬浮按钮相关
+const fabPattern = reactive({
+	buttonColor: '#ffffff',
+	iconColor: '#606266'
+})
+
+const fabPos = reactive({
+	x: 63, // 初始在区域中间
+	y: 30
+})
+
+const fabTemp = reactive({
+	x: 63,
+	y: 30
+})
+
+const fabDragging = ref(false)
+
+// 计算属性
+const productListMaxHeight = computed(() => {
+	// #ifdef MP-WEIXIN
+	return `calc(100vh - 350px - ${statusBarHeight.value}px)`
+	// #endif
+	// #ifdef H5
+	return `calc(100vh - 345px - ${statusBarHeight.value}px - 50px)`
+	// #endif
+})
+
+// 方法
+const focusTextarea = () => {
+	// 先置为 false，等 DOM 更新后再置为 true
+	descTextareaFocus.value = false
+	nextTick(() => {
+		descTextareaFocus.value = true
+	})
+}
+
+const recommend = async () => {
+	// 验证描述和标签必须有一个有值
+	if (!description.value && (!labels.value || labels.value.length === 0)) {
+		uni.showToast({ 
+			title: '请填写描述或标签', 
+			icon: 'none',
+			duration: 2000
+		})
+		return
+	}
+
+	const requestData = {
+		description: description.value || '',
+		typeLabels: typeLabels.value || [],
+		productCount: productCount.value || '',
+		labels: labels.value.join(',') || ''
+	}
+
+	console.log('提交数据：', requestData)
+
+	try {
+		// 开始加载状态
+		isRecommendLoading.value = true
+		loadingText.value = '向量库搜索中...'
+		
+		// 延迟切换文字，模拟两个阶段
+		setTimeout(() => {
+			if (isRecommendLoading.value) {
+				loadingText.value = '智能体推荐中...'
 			}
-		},
-		onLoad() {
-			const sys = uni.getSystemInfoSync()
-			this.statusBarHeight = sys.statusBarHeight || 20
-			// 页面加载时获取数据
-			this.fetchIndustryTypes()
-			this.fetchAllLabels()
-			this.initVoiceInput()
-		},
-		onReady() {
-			// #ifdef MP-WEIXIN
-			// 确保分享菜单显示
-			wx.showShareMenu({
-				withShareTicket: true,
-				menus: ['shareAppMessage', 'shareTimeline']
+		}, 1000)
+		
+		const response = await api.product.fetchAIRecommendProducts(requestData, { disableLoading: true })
+		
+		if (response.code === 0) {
+			// 存储推荐产品数据
+			recommendProducts.value = response.data.products || []
+			
+			// 检查是否有推荐结果
+			if (!recommendProducts.value || recommendProducts.value.length === 0) {
+				// 显示后端返回的提示信息
+				uni.showToast({
+					title: response.msg || '暂无推荐产品',
+					icon: 'none',
+					duration: 3000
+				})
+			}
+		} else {
+			uni.showToast({ 
+				title: response.msg || '推荐失败', 
+				icon: 'none',
+				duration: 2000
 			})
-			// #endif
-		},
-		onShow() {
-			// 仅在小程序端检查录音权限
-			// #ifdef MP-WEIXIN
-			this.ensureRecordPermission()
-			// #endif
-		},
+		}
+	} catch (error) {
+		console.error('AI推荐失败:', error)
+		uni.showToast({ 
+			title: '推荐失败，请重试', 
+			icon: 'none',
+			duration: 2000
+		})
+	} finally {
+		// 结束加载状态
+		isRecommendLoading.value = false
+		loadingText.value = '向量库搜索中...' // 重置为初始文字
+	}
+}
+
+const onFab = () => {
+	// 检查是否有推荐产品组合
+	if (!recommendProducts.value || recommendProducts.value.length === 0) {
+		uni.showToast({
+			title: '请搜索产品',
+			icon: 'none',
+			duration: 2000
+		})
+		return
+	}
+	
+	// 使用本地存储传递数据，避免URL参数长度限制
+	uni.setStorageSync('recommendProducts', recommendProducts.value)
+	uni.navigateTo({
+		url: '/subpages/scheme/scheme'
+	})
+}
+
+const confirmBudget = () => {
+	closeDropdown()
+}
+
+const cancelDropdown = (ref, value = '') => {
+	// 重置选择状态
+	if (ref === 'typeLabels') {
+		typeLabels.value = value || []
+	} else if (ref === 'labels') {
+		labels.value = value || []
+	} else if (ref === 'productCount') {
+		productCount.value = value || ''
+	}
+	closeDropdown()
+}
+
+const selectLabels = (field, value) => {
+	const targetRef = field === 'typeLabels' ? typeLabels : labels
+	// 切换选中状态
+	if (targetRef.value.includes(value)) {
+		// 如果已选中，则取消选中
+		targetRef.value = targetRef.value.filter(item => item !== value)
+	} else {
+		// 如果未选中，则添加选中
+		targetRef.value.push(value)
+	}
+}
+
+// 获取行业类型数据
+const fetchIndustryTypes = async () => {
+	try {
+		const response = await api.dict.fetchProductTypes('sale_product_type')
+		if (response.data && Array.isArray(response.data)) {
+			// 转换数据格式为 { label, value } 格式
+			industryOptions.value = response.data.map(item => ({
+				label: item.label,
+				value: item.label
+			}))
+		}
+	} catch (error) {
+		console.error('获取行业类型失败:', error)
+	}
+}
+
+// 获取所有标签数据
+const fetchAllLabels = async () => {
+	try {
+		const response = await api.product.getAllLabels()
+		if (response.data && Array.isArray(response.data)) {
+			// 转换数据格式为 { label, value } 格式
+			tagOptions.value = response.data.map(item => ({
+				label: item,
+				value: item
+			}))
+		}
+	} catch (error) {
+		console.error('获取标签数据失败:', error)
+	}
+}
+
+// 跳转到产品详情页
+const goToProductDetail = (product) => {
+	uni.navigateTo({
+		url: `/subpages/product/detail?id=${product.id}`
+	})
+}
+
+const confirmProCount = () => {
+	closeDropdown()
+}
+
+const closeDropdown = () => {
+	// 关闭下拉菜单
+	if (proxy.$refs.dropdown) {
+		proxy.$refs.dropdown.close()
+	}
+}
+
+// 初始化语音输入
+const initVoiceInput = () => {
+	// 检查是否支持语音输入
+	// #ifdef H5
+	// 检查是否支持原生语音输入
+	if (typeof window !== 'undefined') {
+		// 尝试使用 x-webkit-speech 属性
+		const testInput = document.createElement('input')
+		if ('webkitSpeech' in testInput || 'speech' in testInput) {
+			useNativeVoiceInput.value = true
+			voiceInputSupported.value = true
+			console.log('使用原生语音输入')
+			return
+		}
 		
-		// 分享给好友
-		onShareAppMessage(options) {
-			const shareConfig = {
-				title: 'AI智能销售助手 - 智能推荐最适合您的产品',
-				path: '/pages/index/index',
-				imageUrl: '/static/share.png'
-			}
-			return shareConfig
-		},
-		
-		// 分享到朋友圈
-		onShareTimeline() {
-			const shareConfig = {
-				title: 'AI智能销售助手 - 智能推荐最适合您的产品',
-				imageUrl: '/static/share.png'
-			}
-			return shareConfig
-		},
-		
-		computed: {
-			productListMaxHeight() {
-				// #ifdef MP-WEIXIN
-				return `calc(100vh - 350px - ${this.statusBarHeight}px)`
-				// #endif
-				// #ifdef H5
-				return `calc(100vh - 345px - ${this.statusBarHeight}px - 50px)`
-				// #endif
-			}
-		},
-		methods: {
-			focusTextarea() {
-				// 先置为 false，等 DOM 更新后再置为 true
-                this.descTextareaFocus = false;
-                this.$nextTick(() => {
-                  this.descTextareaFocus = true;
-                });
-			},
-			async recommend() {
-				// 验证描述和标签必须有一个有值
-				if (!this.description && (!this.labels || this.labels.length === 0)) {
-					uni.showToast({ 
-						title: '请填写描述或标签', 
-						icon: 'none',
-						duration: 2000
-					})
-					return
-				}
-
-				const requestData = {
-					description: this.description || '',
-					typeLabels: this.typeLabels || [],
-					// budget: this.budget || '',
-					productCount: this.productCount || '',
-					labels: this.labels.join(',') || ''
-				}
-
-				console.log('提交数据：', requestData)
-
-				try {
-					// 开始加载状态
-					this.isRecommendLoading = true
-					this.loadingText = '向量库搜索中...'
-					
-					// 延迟切换文字，模拟两个阶段
-					setTimeout(() => {
-						if (this.isRecommendLoading) {
-							this.loadingText = '智能体推荐中...'
-						}
-					}, 1000) // 2秒后切换文字
-					
-					const response = await api.product.fetchAIRecommendProducts(requestData, { disableLoading: true })
-					
-					if (response.code === 0) {
-						// 存储推荐产品数据
-						this.recommendProducts = response.data.products || []
-						
-						// 检查是否有推荐结果
-						if (!this.recommendProducts || this.recommendProducts.length === 0) {
-							// 显示后端返回的提示信息
-							uni.showToast({
-								title: response.msg || '暂无推荐产品',
-								icon: 'none',
-								duration: 3000
-							})
-						}
-					} else {
-						uni.showToast({ 
-							title: response.msg || '推荐失败', 
-							icon: 'none',
-							duration: 2000
-						})
-					}
-				} catch (error) {
-					console.error('AI推荐失败:', error)
-					uni.showToast({ 
-						title: '推荐失败，请重试', 
-						icon: 'none',
-						duration: 2000
-					})
-				} finally {
-					// 结束加载状态
-					this.isRecommendLoading = false
-					this.loadingText = '向量库搜索中...' // 重置为初始文字
-				}
-			},
-			onFab() {
-				// 检查是否有推荐产品组合
-				if (!this.recommendProducts || this.recommendProducts.length === 0) {
-					uni.showToast({
-						title: '请搜索产品',
-						icon: 'none',
-						duration: 2000
-					})
-					return
-				}
-				
-				// 使用本地存储传递数据，避免URL参数长度限制
-				uni.setStorageSync('recommendProducts', this.recommendProducts)
-				uni.navigateTo({
-					url: '/subpages/scheme/scheme'
-				})
-			},
-			confirmBudget() {
-				this.closeDropdown()
-			},
-			cancelDropdown(ref, value='') {
-				// 重置选择状态
-				this[ref] = value || ''
-				this.closeDropdown()
-			},
-			selectLabels(field,value) {
-				// 切换选中状态
-				if (this[field].includes(value)) {
-					// 如果已选中，则取消选中
-					this[field] = this[field].filter(item => item !== value)
-				} else {
-					// 如果未选中，则添加选中
-					this[field].push(value)
-				}
-			},
-			// 获取行业类型数据
-			async fetchIndustryTypes() {
-				try {
-					const response = await api.dict.fetchProductTypes('sale_product_type')
-					if (response.data && Array.isArray(response.data)) {
-						// 转换数据格式为 { label, value } 格式
-						this.industryOptions = response.data.map(item => ({
-							label: item.label,
-							value: item.label
-						}))
-					}
-				} catch (error) {
-					console.error('获取行业类型失败:', error)
-				}
-			},
-			// 获取所有标签数据
-			async fetchAllLabels() {
-				try {
-					const response = await api.product.getAllLabels()
-					if (response.data && Array.isArray(response.data)) {
-						// 转换数据格式为 { label, value } 格式
-						this.tagOptions = response.data.map(item => ({
-							label: item,
-							value: item
-						}))
-					}
-				} catch (error) {
-					console.error('获取标签数据失败:', error)
-				}
-			},
-			// 跳转到产品详情页
-			goToProductDetail(product) {
-							uni.navigateTo({
-				url: `/subpages/product/detail?id=${product.id}`
-			})
-			},
-			confirmProCount() {
-				this.closeDropdown()
-			},
-			closeDropdown(ref) {
-				// 关闭下拉菜单
-				if (this.$refs.dropdown) {
-					this.$refs.dropdown.close()
-				}
-			},
-			// 初始化语音输入
-			initVoiceInput() {
-				// 检查是否支持语音输入
-				// #ifdef H5
-				// 检查是否支持原生语音输入
-				if (typeof window !== 'undefined') {
-					// 尝试使用 x-webkit-speech 属性
-					const testInput = document.createElement('input')
-					if ('webkitSpeech' in testInput || 'speech' in testInput) {
-						this.useNativeVoiceInput = true
-						this.voiceInputSupported = true
-						console.log('使用原生语音输入')
-						return
-					}
-					
-					// 检查是否支持 Web Speech API
-					if ('webkitSpeechRecognition' in window) {
-						this.voiceInputSupported = true
-						console.log('使用 Web Speech API')
-					}
-				}
-				// #endif
-				
-				// #ifdef MP-WEIXIN
-				// 初始化微信同声传译插件（实时语音转文字）
-				try {
-					const plugin = requirePlugin('WechatSI')
-					this.wxAsrManager = plugin.getRecordRecognitionManager()
-					this.wxAsrManager.onRecognize = (res) => {
-						console.log('语音识别结果:', res)
-						if(res.result) {
-							this.description = this.description + res.result
-						}
-					}
-					this.wxAsrManager.onStop = (res) => {
-						console.log('语音识别停止:', res)
-						const finalText = (res && res.result) ? res.result : ''
-						if (finalText) {
-							this.description = this.description + finalText
-							uni.showToast({ title: '语音识别成功', icon: 'success' })
-						} else {
-							uni.showToast({ title: '未识别到语音', icon: 'none' })
-						}
-						this.interimText = ''
-					}
-					this.wxAsrManager.onError = (err) => {
-						this.interimText = ''
-						const tips = {
-                          '-30003': '说话时间间隔太短，无法识别语音',
-                          '-30004': '没有听清，请再说一次~',
-                          '-30011': '上个录音正在识别中，请稍后尝试',
-                        };
-						const retcode = (err && err.retcode != null) ? String(err.retcode) : '';
-						console.error('语音识别错误:', err)
-						uni.showToast({ title: tips[`${retcode}`] || '语音识别失败', icon: 'none' })
-					}
-					this.voiceInputSupported = true
-				} catch (e) {
-					console.error('WechatSI 插件初始化失败:', e)
-					this.voiceInputSupported = false
-				}
-				// #endif
-			},
-			// 切换语音输入
-			toggleVoiceInput(query) {
-				this.isRecording = query
-				if (query) {
-					console.log('开始')
-					this.startRecording()
-				} else {
-					console.log('结束')
-					this.stopRecording()
-				}
-			},
-			// 开始录音
-			startRecording() {
-				// #ifdef H5
-				if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-					this.startWebSpeechRecognition()
-				} else {
-					uni.showToast({ title: '当前浏览器不支持语音输入', icon: 'none' })
-				}
-				// #endif
-
-				// #ifdef MP-WEIXIN
-				this.startWxAsr()
-				// #endif
-			},
-			// H5 语音识别
-			startWebSpeechRecognition() {
-				const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-				if (!SpeechRecognition) {
-					uni.showToast({ title: '当前浏览器不支持语音输入', icon: 'none' })
-					return
-				}
-				
-				const recognition = new SpeechRecognition()
-				recognition.lang = 'zh-CN'
-				recognition.continuous = false
-				recognition.interimResults = false
-				
-				recognition.onstart = () => {
-					// uni.showToast({ title: '开始录音', icon: 'none' })
-				}
-				
-				recognition.onresult = (event) => {
-					const result = event.results[0][0].transcript
-					this.description = this.description + result
-					uni.showToast({ title: '语音识别成功', icon: 'success' })
-				}
-				
-				recognition.onerror = (event) => {
-					console.error('语音识别错误:', event.error)
-					uni.showToast({ title: '语音识别失败', icon: 'none' })
-				}
-				
-				recognition.onend = () => {
-				}
-				
-				recognition.start()
-			},
-			// 停止录音
-			stopRecording() {
-				// #ifdef H5
-				// H5 模式下，语音识别会自动停止
-				this.isRecording = false
-				// #endif
-				// #ifdef MP-WEIXIN
-				this.stopWxAsr()
-				// #endif
-			},
-			// 微信同声传译：开始/停止
-			startWxAsr() {
-				if (!this.wxAsrManager) {
-					uni.showToast({ title: '语音识别不可用', icon: 'none' })
-					return
-				}
-				// #ifdef MP-WEIXIN
-				this.ensureRecordPermission().then((granted) => {
-					if (!granted) return
-					this._doStartWxAsr()
-				})
-				return
-				// #endif
-				this._doStartWxAsr()
-			},
-			_doStartWxAsr() {
-				this.interimText = ''
-				try {
-					this.wxAsrManager.start({
-						lang: 'zh_CN',
-						duration: 60000
-					})
-					// uni.showToast({ title: '开始录音', icon: 'none' })
-				} catch (e) {
-					console.error('启动语音识别失败:', e)
-					uni.showToast({ title: '语音识别启动失败', icon: 'none' })
-				}
-			},
-			stopWxAsr() {
-				if (this.wxAsrManager) {
-					try { this.wxAsrManager.stop() } catch (e) {}
-				}
-			},
-			// 录音权限校验与引导
-			ensureRecordPermission() {
-				return new Promise((resolve) => {
-					uni.getSetting({
-						success: (res) => {
-							const authed = !!res.authSetting['scope.record']
-							if (authed) { resolve(true); return }
-							uni.authorize({
-								scope: 'scope.record',
-								success: () => resolve(true),
-								fail: () => {
-									this.promptOpenSetting('请授权录音，用于语音识别').then(ok => resolve(!!ok)).catch(() => resolve(false))
-								}
-							})
-						},
-						fail: () => resolve(false)
-					})
-				})
-			},
-			promptOpenSetting(tip) {
-				return new Promise((resolve, reject) => {
-					uni.showModal({
-						title: '提示',
-						content: tip,
-						confirmText: '去授权',
-						cancelText: '取消',
-						success: (res) => {
-							if (res.confirm) {
-								uni.openSetting({
-									success: (st) => resolve(st.authSetting && st.authSetting['scope.record'])
-								})
-							} else {
-								reject('用户取消授权')
-							}
-						}
-					})
-				})
-			},
-			// 原生语音输入事件处理
-			onVoiceInputChange(event) {
-				console.log('语音输入结果:', event.target.value)
-				this.description = event.target.value
-				uni.showToast({ title: '语音输入成功', icon: 'success' })
-			},
-			// 文本输入事件处理
-			onTextInput(event) {
-				this.description = event.target.value
-			},
-			periodUnit(period) {
-				const unitMap = {
-					year: '年',
-					season: '季',
-					month: '月',
-					disposable: '一次性'
-				}
-				return unitMap[period] || '一次性'
-			},
-			onFabMove(e) {
-			   // 只记录临时变量，不直接赋值，防止抖动
-			   this.fabTemp.x = e.detail.x
-			   this.fabTemp.y = e.detail.y
-			},
-			onFabTouchEnd() {
-			   // 拖动结束时才赋值，防止回弹
-			   this.fabPos.x = this.fabTemp.x
-			   this.fabPos.y = this.fabTemp.y
-			}
+		// 检查是否支持 Web Speech API
+		if ('webkitSpeechRecognition' in window) {
+			voiceInputSupported.value = true
+			console.log('使用 Web Speech API')
 		}
 	}
+	// #endif
+	
+	// #ifdef MP-WEIXIN
+	// 初始化微信同声传译插件（实时语音转文字）
+	try {
+		const plugin = requirePlugin('WechatSI')
+		wxAsrManager.value = plugin.getRecordRecognitionManager()
+		// 语音识别开始
+		wxAsrManager.value.onStart = (res) => {
+			console.log('语音识别开始:', res)
+			des.value = description.value
+		}
+		wxAsrManager.value.onRecognize = (res) => {
+			console.log('语音识别结果:', res)
+			if(res.result) {
+				description.value = des.value + res.result
+			}
+		}
+		wxAsrManager.value.onStop = (res) => {
+			console.log('语音识别停止:', res)
+			const finalText = (res && res.result) ? res.result : ''
+			if (finalText) {
+				description.value = des.value + finalText
+				uni.showToast({ title: '语音识别成功', icon: 'success' })
+			} else {
+				uni.showToast({ title: '未识别到语音', icon: 'none' })
+			}
+			interimText.value = ''
+		}
+		wxAsrManager.value.onError = (err) => {
+			interimText.value = ''
+			const tips = {
+              '-30003': '说话时间间隔太短，无法识别语音',
+              '-30004': '没有听清，请再说一次~',
+              '-30011': '上个录音正在识别中，请稍后尝试',
+            }
+			const retcode = (err && err.retcode != null) ? String(err.retcode) : ''
+			console.error('语音识别错误:', err)
+			uni.showToast({ title: tips[`${retcode}`] || '语音识别失败', icon: 'none' })
+		}
+		voiceInputSupported.value = true
+	} catch (e) {
+		console.error('WechatSI 插件初始化失败:', e)
+		voiceInputSupported.value = false
+	}
+	// #endif
+}
+
+// 切换语音输入
+const toggleVoiceInput = (query) => {
+	isRecording.value = query
+	if (query) {
+		console.log('开始')
+		startRecording()
+	} else {
+		console.log('结束')
+		stopRecording()
+	}
+}
+
+// 开始录音
+const startRecording = () => {
+	// #ifdef H5
+	if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+		startWebSpeechRecognition()
+	} else {
+		uni.showToast({ title: '当前浏览器不支持语音输入', icon: 'none' })
+	}
+	// #endif
+
+	// #ifdef MP-WEIXIN
+	startWxAsr()
+	// #endif
+}
+
+// H5 语音识别
+const startWebSpeechRecognition = () => {
+	const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+	if (!SpeechRecognition) {
+		uni.showToast({ title: '当前浏览器不支持语音输入', icon: 'none' })
+		return
+	}
+	
+	const recognition = new SpeechRecognition()
+	recognition.lang = 'zh-CN'
+	recognition.continuous = false
+	recognition.interimResults = false
+	
+	recognition.onstart = () => {
+		// uni.showToast({ title: '开始录音', icon: 'none' })
+	}
+	
+	recognition.onresult = (event) => {
+		const result = event.results[0][0].transcript
+		description.value = description.value + result
+		uni.showToast({ title: '语音识别成功', icon: 'success' })
+	}
+	
+	recognition.onerror = (event) => {
+		console.error('语音识别错误:', event.error)
+		uni.showToast({ title: '语音识别失败', icon: 'none' })
+	}
+	
+	recognition.onend = () => {
+	}
+	
+	recognition.start()
+}
+
+// 停止录音
+const stopRecording = () => {
+	// #ifdef H5
+	// H5 模式下，语音识别会自动停止
+	isRecording.value = false
+	// #endif
+	// #ifdef MP-WEIXIN
+	stopWxAsr()
+	// #endif
+}
+
+// 微信同声传译：开始/停止
+const startWxAsr = () => {
+	if (!wxAsrManager.value) {
+		uni.showToast({ title: '语音识别不可用', icon: 'none' })
+		return
+	}
+	// #ifdef MP-WEIXIN
+	ensureRecordPermission().then((granted) => {
+		if (!granted) return
+		_doStartWxAsr()
+	})
+	return
+	// #endif
+	_doStartWxAsr()
+}
+
+const _doStartWxAsr = () => {
+	interimText.value = ''
+	try {
+		wxAsrManager.value.start({
+			lang: 'zh_CN',
+			duration: 60000
+		})
+		// uni.showToast({ title: '开始录音', icon: 'none' })
+	} catch (e) {
+		console.error('启动语音识别失败:', e)
+		uni.showToast({ title: '语音识别启动失败', icon: 'none' })
+	}
+}
+
+const stopWxAsr = () => {
+	if (wxAsrManager.value) {
+		try { wxAsrManager.value.stop() } catch (e) {}
+	}
+}
+
+// 录音权限校验与引导
+const ensureRecordPermission = () => {
+	return new Promise((resolve) => {
+		uni.getSetting({
+			success: (res) => {
+				const authed = !!res.authSetting['scope.record']
+				if (authed) { resolve(true); return }
+				uni.authorize({
+					scope: 'scope.record',
+					success: () => resolve(true),
+					fail: () => {
+						promptOpenSetting('请授权录音，用于语音识别').then(ok => resolve(!!ok)).catch(() => resolve(false))
+					}
+				})
+			},
+			fail: () => resolve(false)
+		})
+	})
+}
+
+const promptOpenSetting = (tip) => {
+	return new Promise((resolve, reject) => {
+		uni.showModal({
+			title: '提示',
+			content: tip,
+			confirmText: '去授权',
+			cancelText: '取消',
+			success: (res) => {
+				if (res.confirm) {
+					uni.openSetting({
+						success: (st) => resolve(st.authSetting && st.authSetting['scope.record'])
+					})
+				} else {
+					reject('用户取消授权')
+				}
+			}
+		})
+	})
+}
+
+// 原生语音输入事件处理
+const onVoiceInputChange = (event) => {
+	console.log('语音输入结果:', event.target.value)
+	description.value = event.target.value
+	uni.showToast({ title: '语音输入成功', icon: 'success' })
+}
+
+// 文本输入事件处理
+const onTextInput = (event) => {
+	description.value = event.target.value
+}
+
+const periodUnit = (period) => {
+	const unitMap = {
+		year: '年',
+		season: '季',
+		month: '月',
+		disposable: '一次性'
+	}
+	return unitMap[period] || '一次性'
+}
+
+const onFabMove = (e) => {
+   // 只记录临时变量，不直接赋值，防止抖动
+   fabTemp.x = e.detail.x
+   fabTemp.y = e.detail.y
+}
+
+const onFabTouchEnd = () => {
+   // 拖动结束时才赋值，防止回弹
+   fabPos.x = fabTemp.x
+   fabPos.y = fabTemp.y
+}
+
+// 生命周期钩子
+onMounted(() => {
+	const sys = uni.getSystemInfoSync()
+	statusBarHeight.value = sys.statusBarHeight || 20
+	// 页面加载时获取数据
+	fetchIndustryTypes()
+	fetchAllLabels()
+	initVoiceInput()
+	
+	// #ifdef MP-WEIXIN
+	// 确保分享菜单显示
+	wx.showShareMenu({
+		withShareTicket: true,
+		menus: ['shareAppMessage', 'shareTimeline']
+	})
+	// #endif
+	
+	// 仅在小程序端检查录音权限
+	// #ifdef MP-WEIXIN
+	ensureRecordPermission()
+	// #endif
+})
+
+// 使用 defineOptions 来定义页面配置和分享功能
+defineOptions({
+	// 分享给好友
+	onShareAppMessage(options) {
+		const shareConfig = {
+			title: 'AI智能销售助手 - 智能推荐最适合您的产品',
+			path: '/pages/index/index',
+			imageUrl: '/static/share.png'
+		}
+		return shareConfig
+	},
+
+	// 分享到朋友圈
+	onShareTimeline() {
+		const shareConfig = {
+			title: 'AI智能销售助手 - 智能推荐最适合您的产品',
+			imageUrl: '/static/share.png'
+		}
+		return shareConfig
+	}
+})
 </script>
 
 <style scoped>

@@ -32,8 +32,8 @@
           <view class="extend-class" @tap="handleWrapTap('tenantName')">
             <input 
               v-model="formData.tenantName" 
-              :disabled="inputStates.tenantName.disabled"
-              :focus="inputStates.tenantName.focus"
+              :disabled="inputStates.tenantName && inputStates.tenantName.disabled"
+              :focus="inputStates.tenantName && inputStates.tenantName.focus"
               placeholder="请输入企业唯一ID"
               placeholder-class="title_input"
               cursor-color="#007aff"
@@ -49,8 +49,8 @@
           <view class="extend-class" @tap="handleWrapTap('username')">
             <input 
               v-model="formData.username" 
-              :disabled="inputStates.username.disabled"
-              :focus="inputStates.username.focus"
+              :disabled="inputStates.username && inputStates.username.disabled"
+              :focus="inputStates.username && inputStates.username.focus"
               placeholder="请输入用户名"
               placeholder-class="title_input"
               cursor-color="#007aff"
@@ -66,8 +66,8 @@
           <view class="extend-class password-wrapper" @tap="handleWrapTap('password')">
             <input 
               v-model="formData.password" 
-              :disabled="inputStates.password.disabled"
-              :focus="inputStates.password.focus"
+              :disabled="inputStates.password && inputStates.password.disabled"
+              :focus="inputStates.password && inputStates.password.focus"
               :password="!showPassword"
               placeholder="请输入密码"
               placeholder-class="title_input"
@@ -114,277 +114,276 @@
   </view>
 </template>
 
-<script>
-import http from '@/utils/request.js'
+<script setup>
+import { ref, reactive, nextTick, onMounted } from 'vue'
 import api from '@/utils/api.js'
 import { encrypt, decrypt } from '@/utils/encrypt.js'
 
-export default {
-  data() {
-    return {
-      isIOS: false,
-      inputStates: {
-        tenantName: {
-          disabled: false,
-          focus: false
-        },
-        username: {
-          disabled: false,
-          focus: false
-        },
-        password: {
-          disabled: false,
-          focus: false
-        }
-      },
-      formData: {
-        tenantName: '',
-        username: '',
-        password: ''
-      },
-      showPassword: false,
-      rememberMe: false,
-      checkboxValue: [],
-      loading: false,
-      isCheckingLogin: true, // 检查登录状态中
-      rules: {
-        tenantName: [
-          {
-            required: true,
-            message: '请输入企业唯一ID',
-            trigger: ['blur', 'change']
-          }
-        ],
-        username: [
-          {
-            required: true,
-            message: '请输入用户名',
-            trigger: ['blur', 'change']
-          }
-        ],
-        password: [
-          {
-            required: true,
-            message: '请输入密码',
-            trigger: ['blur', 'change']
-          },
-          {
-            min: 8,
-            message: '请输入至少8位的密码',
-            trigger: ['blur', 'change']
-          }
-        ]
-      }
-    }
+// 响应式数据
+const isIOS = ref(false)
+const inputStates = reactive({
+  tenantName: {
+    disabled: false,
+    focus: false
   },
-  
-  onLoad() {
-    // 检查是否已经有accessToken，如果有则直接跳转到首页
-    this.checkLoginStatus()
-    // 检查是否记住了登录信息
-    this.loadRememberedInfo()
-    // 检查是否是iOS系统
-    const systemInfo = uni.getSystemInfoSync()
-    console.log('系统信息:', systemInfo)
-    this.isIOS = systemInfo.platform === 'ios'
-    // 如果是iOS，初始化禁用输入框
-    if (this.isIOS) {
-      this.inputStates.tenantName.disabled = true
-      this.inputStates.username.disabled = true
-      this.inputStates.password.disabled = true
-    }
+  username: {
+    disabled: false,
+    focus: false
   },
-  
-  methods: {
-    // 输入框相关方法
-    onInput(event, field) {
-      this.formData[field] = event.detail.value
-      // 触发表单校验
-      this.$refs.loginForm.validateField(field)
-    },
-    
-    onBlur(event, field) {
-      console.log('onBlur', field)
-      if (this.isIOS) {
-        this.inputStates[field].disabled = true
-        this.inputStates[field].focus = false
-      }
-      // 触发表单校验
-      this.$refs.loginForm.validateField(field)
-    },
-    handleWrapTap(field) {
-      console.log('handleWrapTap', field)
-      if (this.isIOS) {
-        this.inputStates[field].disabled = false
-        setTimeout(() => {
-          this.inputStates[field].focus = true
-        }, 20)
-      }
-    },
-    
-    // 检查登录状态
-    checkLoginStatus() {
-      try {
-        const accessToken = uni.getStorageSync('accessToken')
-        const userInfo = uni.getStorageSync('userInfo')
-        
-        if (accessToken && userInfo) {
-          console.log('检测到已登录状态，自动跳转到首页')
-          // 延迟跳转，避免页面闪烁
-          setTimeout(() => {
-            uni.switchTab({
-              url: '/pages/index/index'
-            })
-          }, 500)
-        } else {
-          // 没有登录信息，结束检查状态
-          this.isCheckingLogin = false
-        }
-      } catch (error) {
-        console.error('检查登录状态失败:', error)
-        this.isCheckingLogin = false
-      }
-    },
-    
-    // 记住我选择变化
-    onRememberChange(value) {
-      this.rememberMe = value.includes('remember')
-    },
-    
-    // 加载记住的登录信息
-    loadRememberedInfo() {
-      try {
-        const rememberMe = uni.getStorageSync('rememberMe') === 'true'
-        const savedUsername = uni.getStorageSync('savedUsername')
-        const savedTenantName = uni.getStorageSync('savedTenantName')
-        const savedPassword = uni.getStorageSync('savedPassword')
-        
-        if (rememberMe && savedUsername && savedTenantName) {
-          this.formData.username = savedUsername
-          this.formData.tenantName = savedTenantName
-          if (savedPassword) {
-            this.formData.password = decrypt(savedPassword) // 解密密码
-          }
-          this.rememberMe = true
-          this.checkboxValue = ['remember']
-        }
-      } catch (error) {
-        console.log('加载记住的登录信息失败:', error)
-      }
-    },
-    
-    // 保存登录信息
-    saveLoginInfo() {
-      if (this.rememberMe) {
-        uni.setStorageSync('rememberMe', 'true')
-        uni.setStorageSync('savedUsername', this.formData.username)
-        uni.setStorageSync('savedTenantName', this.formData.tenantName)
-        // 加密保存密码
-        const encryptedPassword = encrypt(this.formData.password)
-        uni.setStorageSync('savedPassword', encryptedPassword)
-      } else {
-        uni.removeStorageSync('rememberMe')
-        uni.removeStorageSync('savedUsername')
-        uni.removeStorageSync('savedTenantName')
-        uni.removeStorageSync('savedPassword')
-      }
-    },
-    
-    // 表单验证
-    validateForm() {
-      return new Promise((resolve) => {
-        this.$refs.loginForm.validate().then(res => {
-          resolve(res)
-        }).catch(errors => {
-          // uview-plus会自动显示错误信息
-          resolve(false)
-        })
-      })
-    },
-    
-    // 处理登录
-    async handleLogin() {
-      const isValid = await this.validateForm()
-      if (!isValid) {
-        return
-      }
-      
-      this.loading = true
-      
-      try {
-        uni.showLoading({ title: '登录中...', mask: true })
-        // 1. 先通过租户名获取租户ID
-        const tenantResponse = await api.user.getTenantIdByName(this.formData.tenantName)
-        
-        if (!tenantResponse.data) {
-          uni.showToast({
-            title: '企业ID不存在，请检查输入',
-            icon: 'none'
-          })
-          return
-        }
-        
-        const tenantId = tenantResponse.data
-        
-        // 将tenantId存储在本地
-        uni.setStorageSync('tenant-id', tenantId)
-        
-        // 2. 处理记住我功能
-        this.saveLoginInfo()
-        
-        // 3. 调用登录接口
-        const loginData = {
-          username: this.formData.username,
-          password: this.formData.password,
-          tenantId: tenantId,
-          tenantName: this.formData.tenantName,
-          rememberMe: this.rememberMe
-        }
-        
-        const loginResponse = await api.user.login(loginData)
-        
-        if (loginResponse.code === 0) {
-          // 登录成功，保存token
-          uni.setStorageSync('accessToken', loginResponse.data.accessToken)
-          
-          // 获取用户权限信息
-          try {
-            const permissionResponse = await api.user.getPermissionInfo()
-            
-            if (permissionResponse.code === 0 && permissionResponse.data) {
-              // 只保存用户信息字段
-              const userInfo = permissionResponse.data.user
-              uni.setStorageSync('userInfo', userInfo)
-              
-              // 可选：保存其他权限信息（如果后续需要用到）
-              uni.setStorageSync('userRoles', permissionResponse.data.roles)
-              uni.setStorageSync('userPermissions', permissionResponse.data.permissions)
-              uni.setStorageSync('userMenus', permissionResponse.data.menus)
-            }
-          } catch (error) {
-            console.error('获取用户权限信息失败:', error)
-            // 权限信息获取失败不影响登录流程
-          }
-          
-          // 跳转到首页
-          setTimeout(() => {
-            uni.hideLoading()
-            uni.switchTab({
-              url: '/pages/index/index'
-            })
-          }, 1000)
-        }
-        
-      } catch (error) {
-        console.error('登录失败:', error)
-        // uni.hideLoading()
-        // 错误提示已在request.js中处理
-      } finally {
-        this.loading = false
-      }
+  password: {
+    disabled: false,
+    focus: false
+  }
+})
+
+const formData = reactive({
+  tenantName: '',
+  username: '',
+  password: ''
+})
+
+const showPassword = ref(false)
+const rememberMe = ref(false)
+const checkboxValue = ref([])
+const loading = ref(false)
+const isCheckingLogin = ref(true) // 检查登录状态中
+const loginForm = ref(null)
+
+const rules = reactive({
+  tenantName: [
+    {
+      required: true,
+      message: '请输入企业唯一ID',
+      trigger: ['blur', 'change']
     }
+  ],
+  username: [
+    {
+      required: true,
+      message: '请输入用户名',
+      trigger: ['blur', 'change']
+    }
+  ],
+  password: [
+    {
+      required: true,
+      message: '请输入密码',
+      trigger: ['blur', 'change']
+    },
+    {
+      min: 8,
+      message: '请输入至少8位的密码',
+      trigger: ['blur', 'change']
+    }
+  ]
+})
+
+// 输入框相关方法
+const onInput = (event, field) => {
+  formData[field] = event.detail.value
+  // 触发表单校验
+  loginForm.value?.validateField(field)
+}
+
+const onBlur = (event, field) => {
+  console.log('onBlur', field)
+  if (isIOS.value) {
+    inputStates[field].disabled = true
+    inputStates[field].focus = false
+  }
+  // 触发表单校验
+  loginForm.value?.validateField(field)
+}
+
+const handleWrapTap = (field) => {
+  console.log('handleWrapTap', field)
+  if (isIOS.value) {
+    inputStates[field].disabled = false
+    setTimeout(() => {
+      inputStates[field].focus = true
+    }, 20)
   }
 }
+
+// 检查登录状态
+const checkLoginStatus = () => {
+  try {
+    const accessToken = uni.getStorageSync('accessToken')
+    const userInfo = uni.getStorageSync('userInfo')
+    
+    if (accessToken && userInfo) {
+      console.log('检测到已登录状态，自动跳转到首页')
+      // 延迟跳转，避免页面闪烁
+      setTimeout(() => {
+        uni.switchTab({
+          url: '/pages/index/index'
+        })
+      }, 500)
+    } else {
+      // 没有登录信息，结束检查状态
+      isCheckingLogin.value = false
+    }
+  } catch (error) {
+    console.error('检查登录状态失败:', error)
+    isCheckingLogin.value = false
+  }
+}
+
+// 记住我选择变化
+const onRememberChange = (value) => {
+  rememberMe.value = value.includes('remember')
+}
+
+// 加载记住的登录信息
+const loadRememberedInfo = () => {
+  try {
+    const savedRememberMe = uni.getStorageSync('rememberMe') === 'true'
+    const savedUsername = uni.getStorageSync('savedUsername')
+    const savedTenantName = uni.getStorageSync('savedTenantName')
+    const savedPassword = uni.getStorageSync('savedPassword')
+    
+    if (savedRememberMe && savedUsername && savedTenantName) {
+      formData.username = savedUsername
+      formData.tenantName = savedTenantName
+      if (savedPassword) {
+        formData.password = decrypt(savedPassword) // 解密密码
+      }
+      rememberMe.value = true
+      checkboxValue.value = ['remember']
+    }
+  } catch (error) {
+    console.log('加载记住的登录信息失败:', error)
+  }
+}
+
+// 保存登录信息
+const saveLoginInfo = () => {
+  if (rememberMe.value) {
+    uni.setStorageSync('rememberMe', 'true')
+    uni.setStorageSync('savedUsername', formData.username)
+    uni.setStorageSync('savedTenantName', formData.tenantName)
+    // 加密保存密码
+    const encryptedPassword = encrypt(formData.password)
+    uni.setStorageSync('savedPassword', encryptedPassword)
+  } else {
+    uni.removeStorageSync('rememberMe')
+    uni.removeStorageSync('savedUsername')
+    uni.removeStorageSync('savedTenantName')
+    uni.removeStorageSync('savedPassword')
+  }
+}
+
+// 表单验证
+const validateForm = () => {
+  return new Promise((resolve) => {
+    loginForm.value.validate().then(res => {
+      resolve(res)
+    }).catch(errors => {
+      // uview-plus会自动显示错误信息
+      resolve(false)
+    })
+  })
+}
+
+// 处理登录
+const handleLogin = async () => {
+  const isValid = await validateForm()
+  if (!isValid) {
+    return
+  }
+  
+  loading.value = true
+  
+  try {
+    uni.showLoading({ title: '登录中...', mask: true })
+    // 1. 先通过租户名获取租户ID
+    const tenantResponse = await api.user.getTenantIdByName(formData.tenantName)
+    
+    if (!tenantResponse.data) {
+      uni.showToast({
+        title: '企业ID不存在，请检查输入',
+        icon: 'none'
+      })
+      return
+    }
+    
+    const tenantId = tenantResponse.data
+    
+    // 将tenantId存储在本地
+    uni.setStorageSync('tenant-id', tenantId)
+    
+    // 2. 处理记住我功能
+    saveLoginInfo()
+    
+    // 3. 调用登录接口
+    const loginData = {
+      username: formData.username,
+      password: formData.password,
+      tenantId: tenantId,
+      tenantName: formData.tenantName,
+      rememberMe: rememberMe.value
+    }
+    
+    const loginResponse = await api.user.login(loginData)
+    
+    if (loginResponse.code === 0) {
+      // 登录成功，保存token
+      uni.setStorageSync('accessToken', loginResponse.data.accessToken)
+      
+      // 获取用户权限信息
+      try {
+        const permissionResponse = await api.user.getPermissionInfo()
+        
+        if (permissionResponse.code === 0 && permissionResponse.data) {
+          // 只保存用户信息字段
+          const userInfo = permissionResponse.data.user
+          uni.setStorageSync('userInfo', userInfo)
+          
+          // 可选：保存其他权限信息（如果后续需要用到）
+          uni.setStorageSync('userRoles', permissionResponse.data.roles)
+          uni.setStorageSync('userPermissions', permissionResponse.data.permissions)
+          uni.setStorageSync('userMenus', permissionResponse.data.menus)
+        }
+      } catch (error) {
+        console.error('获取用户权限信息失败:', error)
+        // 权限信息获取失败不影响登录流程
+      }
+      
+      // 跳转到首页
+      setTimeout(() => {
+        uni.hideLoading()
+        uni.switchTab({
+          url: '/pages/index/index'
+        })
+      }, 1000)
+    }
+    
+  } catch (error) {
+    console.error('登录失败:', error)
+    // uni.hideLoading()
+    // 错误提示已在request.js中处理
+  } finally {
+    loading.value = false
+  }
+}
+
+// 生命周期钩子
+onMounted(() => {
+  // 检查是否已经有accessToken，如果有则直接跳转到首页
+  checkLoginStatus()
+  // 检查是否记住了登录信息
+  loadRememberedInfo()
+  // 检查是否是iOS系统
+  const systemInfo = uni.getSystemInfoSync()
+  console.log('系统信息:', systemInfo)
+  isIOS.value = systemInfo.platform === 'ios'
+  // 如果是iOS，初始化禁用输入框
+  if (isIOS.value) {
+    inputStates.tenantName.disabled = true
+    inputStates.username.disabled = true
+    inputStates.password.disabled = true
+  }
+})
 </script>
 
 <style lang="scss" scoped>

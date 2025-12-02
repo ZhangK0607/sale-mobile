@@ -14,46 +14,45 @@
   </view>
 </template>
 
-<script>
-export default {
-  name: 'CustomNavbar',
-  props: {
-    title: {
-      type: String,
-      default: ''
-    },
-    showBack: {
-      type: Boolean,
-      default: false
-    },
-    overflowHidden: {
-      type: Boolean,
-      default: true
-    }
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+
+defineOptions({
+  name: 'CustomNavbar'
+})
+
+const props = defineProps({
+  title: {
+    type: String,
+    default: ''
   },
-  data() {
-    return {
-      statusBarHeight: 0
-    }
+  showBack: {
+    type: Boolean,
+    default: false
   },
-  computed: {
-    customNavbarStyle() {
-      let style = `padding-top:${this.statusBarHeight}px;`
-      if (this.overflowHidden) {
-        style += 'overflow:hidden;'
-      }
-      return style
-    }
-  },
-  mounted() {
-    const sys = uni.getSystemInfoSync()
-    this.statusBarHeight = sys.statusBarHeight || 20
-  },
-  methods: {
-    goBack() {
-      uni.navigateBack()
-    }
+  overflowHidden: {
+    type: Boolean,
+    default: true
   }
+})
+
+const statusBarHeight = ref(0)
+
+const customNavbarStyle = computed(() => {
+  let style = `padding-top:${statusBarHeight.value}px;`
+  if (props.overflowHidden) {
+    style += 'overflow:hidden;'
+  }
+  return style
+})
+
+onMounted(() => {
+  const sys = uni.getSystemInfoSync()
+  statusBarHeight.value = sys.statusBarHeight || 20
+})
+
+const goBack = () => {
+  uni.navigateBack()
 }
 </script>
 

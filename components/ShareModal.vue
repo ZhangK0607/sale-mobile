@@ -9,17 +9,22 @@
   </view>
 </template>
 
-<script>
-export default {
-  props: {
-    show: Boolean,
-    link: String
+<script setup>
+defineProps({
+  show: {
+    type: Boolean,
+    required: true
   },
-  methods: {
-    onConfirm() {
-      this.$emit('close')
-    }
+  link: {
+    type: String,
+    required: true
   }
+})
+
+const emit = defineEmits(['close'])
+
+const onConfirm = () => {
+  emit('close')
 }
 </script>
 

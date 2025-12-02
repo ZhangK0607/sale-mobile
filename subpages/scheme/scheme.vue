@@ -18,7 +18,7 @@
 			<!-- 产品列表 -->
 			<view class="product-section">
 				<!-- 空状态提示 -->
-				<view v-if="productList.length === 0 && dataLoaded==true" class="empty-state">
+				<view v-if="(productList && productList.length === 0) && dataLoaded==true" class="empty-state">
 					<view class="empty-icon">📦</view>
 					<view class="empty-text">暂无产品数据</view>
 					<view class="empty-desc">请先在首页搜索推荐产品</view>
@@ -145,263 +145,276 @@
 	</view>
 </template>
 
-<script>
+<script setup>
 import api from '@/utils/api.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 
-	export default {
-	components: { CustomNavbar },
-	data() {
-		return {
-			statusBarHeight: 0,
-			productList: [], // 产品列表
-			selectedProducts: [], // 选中状态数组
-		    selectedPeriod: 'year',
-		    periodOptions: [
-		    	{ value: 'year', label: '年' },
-		    	{ value: 'season', label: '季度' },
-		    	{ value: 'month', label: '月' }
-		    ],
-		    dataLoaded: false // 标记数据是否已加载
-		}
-	},
-	onLoad(options) {
-		const sys = uni.getSystemInfoSync()
-		this.statusBarHeight = sys.statusBarHeight || 20
+// 响应式数据
+const statusBarHeight = ref(0)
+const productList = ref([]) // 产品列表
+const selectedProducts = ref([]) // 选中状态数组
+const selectedPeriod = ref('year')
+const periodOptions = [
+	{ value: 'year', label: '年' },
+	{ value: 'season', label: '季度' },
+	{ value: 'month', label: '月' }
+]
+const dataLoaded = ref(false) // 标记数据是否已加载
 
-		// 从本地存储获取产品数据
-		try {
-			const storedProducts = uni.getStorageSync('recommendProducts')
-			if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
-				// 为每个产品添加quantity字段，默认为1
-				this.productList = storedProducts.map(product => ({
-					...product,
-					num: product.num || 1
-				}))
-				// 初始化选中状态数组，默认全部选中
-				this.selectedProducts = new Array(this.productList.length).fill(true)
-				console.log('从本地存储获取的产品数据:', this.productList)
-			} else {
-				// 没有数据时显示空状态
-				this.productList = []
-				this.selectedProducts = []
-				console.log('未找到产品数据，显示空状态')
-			}
-			// 标记数据已读取，在页面卸载时清除
-			this.dataLoaded = true
-		} catch (e) {
-			console.error('获取产品数据失败:', e)
-			// 获取失败时保持空数组，显示空状态
-			this.productList = []
-			this.selectedProducts = []
-			// 标记数据已读取，在页面卸载时清除
-			this.dataLoaded = true
-		}
-	},
-	onUnload() {
-		// 页面卸载时清除存储的数据
-		if (this.dataLoaded) {
-			uni.removeStorageSync('recommendProducts')
-		}
-	},
-	computed: {
-		productListMaxHeight() {
-			return `calc(100vh - 44px - 100px - ${this.statusBarHeight}px)`
-		},
-		// 计算总金额（只计算选中的产品，包含数量）
-		calculatedTotal() {
-		    const total = this.productList.reduce((sum, p, index) => {
-		    	if (!this.selectedProducts[index]) return sum
-		    	const price = parseFloat(p.price) || 0
-		    	const src = p.period
-		    	const factor = this.periodFactor(this.isAllDisposable ? 'disposable' : this.selectedPeriod, src)
-		    	const qty = p.num || 0
-		    	return sum + (price * factor * qty)
-		    }, 0)
-		    return Math.round(total * 100) / 100
-		},
-	    periodIndex() {
-	    	return Math.max(0, this.periodOptions.findIndex(opt => opt.value === this.selectedPeriod))
-	    },
-		// 判断是否所有选中的产品都是一次性的
-		isAllDisposable() {
-			const selectedProducts = this.productList.filter((_, index) => this.selectedProducts[index])
-			return selectedProducts.length > 0 && selectedProducts.every(p => !p.period || p.period === 'disposable')
-		},
-		// 是否全选
-		isAllSelected() {
-			return this.productList.length > 0 && this.selectedProducts.every(selected => selected)
-		},
-		// 已选产品数量
-		selectedCount() {
-			return this.selectedProducts.filter(selected => selected).length
-		}
-	},
-watch: {},
-	methods: {
-		goBack() {
-			uni.navigateBack()
-		},
-	    onPeriodChange(e) {
-	    	const index = e.detail.value
-	    	const option = this.periodOptions[index]
-	    	this.selectedPeriod = option?.value || this.selectedPeriod
-	    },
-	    computeSubtotal(price, quantity, productPeriod, targetPeriod) {
-	    	const factor = this.periodFactor(targetPeriod, productPeriod)
-	    	const subtotalPrice = (Number(price) || 0) * (Number(quantity) || 0) * factor
-	    	return Math.round(subtotalPrice * 100) / 100
-	    },
-	    formatAmount(value) {
-	    	const n = Number(value)
-	    	if (!isFinite(n)) return '0.00'
-	    	return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-	    },
-	    periodFactor(target, source) {
-	    	const src = source || 'disposable'
-	    	if (target === 'month') {
-	    		if (src === 'month') return 1
-	    		if (src === 'season') return 1 / 3
-	    		if (src === 'year') return 1 / 12
-	    		return 1
-	    	}
-	    	if (target === 'season') {
-	    		if (src === 'season') return 1
-	    		if (src === 'month') return 3
-	    		if (src === 'year') return 1 / 4
-	    		return 1
-	    	}
-	    	if (target === 'year') {
-	    		if (src === 'year') return 1
-	    		if (src === 'month') return 12
-	    		if (src === 'season') return 4
-	    		return 1
-	    	}
-	    	return 1
-	    },
-	    periodUnit(period) {
-	    	const unitMap = {
-	    		year: '年',
-	    		season: '季',
-	    		month: '月',
-	    		disposable: '一次性'
-	    	}
-	    	return unitMap[period] || '一次性'
-	    },
-		// 切换单个产品选中状态
-		toggleProductSelect(index) {
-			this.$set(this.selectedProducts, index, !this.selectedProducts[index])
-		},
-		// 切换全选状态
-		toggleSelectAll() {
-			const newState = !this.isAllSelected
-			this.selectedProducts = new Array(this.productList.length).fill(newState)
-		},
-		// 更新产品数量
-		updateQuantity(index, value) {
-			this.$set(this.productList[index], 'num', value)
-		},
-		// 跳转到产品详情页
-		goToProductDetail(product) {
-			uni.navigateTo({
-				url: `/subpages/product/detail?id=${product.id}`
-			})
-		},
-		// 生成报价单
-		async generatePlan() {
-			// 检查是否有选中的产品
-			const selectedProducts = this.productList.filter((product, index) => this.selectedProducts[index])
-			
-			if (selectedProducts.length === 0) {
-				uni.showToast({
-					title: '请选择至少一个产品',
-					icon: 'none'
-				})
-				return
-			}
+// 计算属性
+const productListMaxHeight = computed(() => {
+	return `calc(100vh - 44px - 100px - ${statusBarHeight.value}px)`
+})
 
-			try {
-				uni.showLoading({ title: '生成报价单中...', mask: true })
-				
-				// 准备请求数据
-				const requestData = {
-					products: selectedProducts.map(p => {
-                      const { createTime, updateTime, ...rest } = p
-				      const price = typeof p?.price === 'number' ? p.price : parseFloat(p?.price) || 0
-				      const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : parseFloat(p?.num) || 0
-				      const subtotalPrice = this.computeSubtotal(price, quantity, p?.period, this.selectedPeriod)
-				      return {
-				        ...rest,
-				        subtotalPrice,
-				      };
-                    }),
-					totalPrice: this.calculatedTotal
-				}
+// 计算总金额（只计算选中的产品，包含数量）
+const calculatedTotal = computed(() => {
+    const total = productList.value.reduce((sum, p, index) => {
+    	if (!selectedProducts.value[index]) return sum
+    	const price = parseFloat(p.price) || 0
+    	const src = p.period
+    	const factor = periodFactor(isAllDisposable.value ? 'disposable' : selectedPeriod.value, src)
+    	const qty = p.num || 0
+    	return sum + (price * factor * qty)
+    }, 0)
+    return Math.round(total * 100) / 100
+})
 
-				console.log('生成报价单请求数据:', requestData)
+const periodIndex = computed(() => {
+	return Math.max(0, periodOptions.findIndex(opt => opt.value === selectedPeriod.value))
+})
 
-				// 调用生成报价单接口
-				const response = await api.quotation.createQuotation(requestData)
-				
-				if (response.code === 0 && response.data) {
-					// 使用本地存储传递数据，避免URL参数长度限制
-					uni.setStorageSync('quotationData', response.data)
-					uni.setStorageSync('quotationPeriod', this.selectedPeriod)
-					uni.navigateTo({
-						url: '/subpages/quotation/quotation'
-					})
-				} else {
-					uni.showToast({
-						title: response.msg || '生成报价单失败',
-						icon: 'none'
-					})
-				}
-			} catch (error) {
-				console.error('生成报价单失败:', error)
-				uni.showToast({
-					title: '生成报价单失败，请重试',
-					icon: 'none'
-				})
-			} finally {
-				uni.hideLoading()
-			}
-		},
-		// 生成合同
-		async generateContract() {
-			const selectedProducts = this.productList.filter((p, idx) => this.selectedProducts[idx])
-			if (selectedProducts.length === 0) {
-				uni.showToast({ title: '请选择至少一个产品', icon: 'none' })
-				return
-			}
-			const requestData = {
-				products: selectedProducts.map(p => {
-                  const { createTime, updateTime, ...rest } = p
-				  const price = typeof p?.price === 'number' ? p.price : parseFloat(p?.price) || 0
-				  const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : parseFloat(p?.num) || 0
-				  const subtotalPrice = this.computeSubtotal(price, quantity, p?.period, this.selectedPeriod)
-				  return {
-				    ...rest,
-				    subtotalPrice,
-				  };
-                }),
-				totalPrice: this.calculatedTotal
-			}
-			// 使用本地存储传递数据，避免URL参数长度限制
-			uni.setStorageSync('contractData', requestData)
-			uni.navigateTo({ url: '/subpages/contract/contract' })
-		},
-		// 生成PPT
-		async generateProposal() {
-			const selectedProducts = this.productList.filter((p, idx) => this.selectedProducts[idx])
-			if (selectedProducts.length === 0) {
-				uni.showToast({ title: '请选择至少一个产品', icon: 'none' })
-				return
-			}
-			// 使用本地存储传递数据，避免URL参数长度限制
-			uni.setStorageSync('pptProducts', selectedProducts)
-			uni.navigateTo({ url: '/subpages/ppt/ppt' })
+// 判断是否所有选中的产品都是一次性的
+const isAllDisposable = computed(() => {
+	const selectedProductsFiltered = productList.value.filter((_, index) => selectedProducts.value[index])
+	return selectedProductsFiltered.length > 0 && selectedProductsFiltered.every(p => !p.period || p.period === 'disposable')
+})
+
+// 是否全选
+const isAllSelected = computed(() => {
+	return productList.value.length > 0 && selectedProducts.value.every(selected => selected)
+})
+
+// 已选产品数量
+const selectedCount = computed(() => {
+	return selectedProducts.value.filter(selected => selected).length
+})
+
+// 生命周期钩子
+onMounted(() => {
+	const sys = uni.getSystemInfoSync()
+	statusBarHeight.value = sys.statusBarHeight || 20
+
+	// 从本地存储获取产品数据
+	try {
+		const storedProducts = uni.getStorageSync('recommendProducts')
+		if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
+			// 为每个产品添加quantity字段，默认为1
+			productList.value = storedProducts.map(product => ({
+				...product,
+				num: product.num || 1
+			}))
+			// 初始化选中状态数组，默认全部选中
+			selectedProducts.value = new Array(productList.value.length).fill(true)
+			console.log('从本地存储获取的产品数据:', productList.value)
+		} else {
+			// 没有数据时显示空状态
+			productList.value = []
+			selectedProducts.value = []
+			console.log('未找到产品数据，显示空状态')
 		}
+		// 标记数据已读取，在页面卸载时清除
+		dataLoaded.value = true
+	} catch (e) {
+		console.error('获取产品数据失败:', e)
+		// 获取失败时保持空数组，显示空状态
+		productList.value = []
+		selectedProducts.value = []
+		// 标记数据已读取，在页面卸载时清除
+		dataLoaded.value = true
 	}
+})
+
+onUnmounted(() => {
+	// 页面卸载时清除存储的数据
+	if (dataLoaded.value) {
+		uni.removeStorageSync('recommendProducts')
+	}
+})
+// 方法
+const goBack = () => {
+	uni.navigateBack()
+}
+
+const onPeriodChange = (e) => {
+	const index = e.detail.value
+	const option = periodOptions[index]
+	selectedPeriod.value = option?.value || selectedPeriod.value
+}
+
+const computeSubtotal = (price, quantity, productPeriod, targetPeriod) => {
+	const factor = periodFactor(targetPeriod, productPeriod)
+	const subtotalPrice = (Number(price) || 0) * (Number(quantity) || 0) * factor
+	return Math.round(subtotalPrice * 100) / 100
+}
+
+const formatAmount = (value) => {
+	const n = Number(value)
+	if (!isFinite(n)) return '0.00'
+	return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+const periodFactor = (target, source) => {
+	const src = source || 'disposable'
+	if (target === 'month') {
+		if (src === 'month') return 1
+		if (src === 'season') return 1 / 3
+		if (src === 'year') return 1 / 12
+		return 1
+	}
+	if (target === 'season') {
+		if (src === 'season') return 1
+		if (src === 'month') return 3
+		if (src === 'year') return 1 / 4
+		return 1
+	}
+	if (target === 'year') {
+		if (src === 'year') return 1
+		if (src === 'month') return 12
+		if (src === 'season') return 4
+		return 1
+	}
+	return 1
+}
+
+const periodUnit = (period) => {
+	const unitMap = {
+		year: '年',
+		season: '季',
+		month: '月',
+		disposable: '一次性'
+	}
+	return unitMap[period] || '一次性'
+}
+
+// 切换单个产品选中状态
+const toggleProductSelect = (index) => {
+	selectedProducts.value[index] = !selectedProducts.value[index]
+}
+
+// 切换全选状态
+const toggleSelectAll = () => {
+	const newState = !isAllSelected.value
+	selectedProducts.value = new Array(productList.value.length).fill(newState)
+}
+
+// 更新产品数量
+const updateQuantity = (index, value) => {
+	productList.value[index].num = value
+}
+
+// 跳转到产品详情页
+const goToProductDetail = (product) => {
+	uni.navigateTo({
+		url: `/subpages/product/detail?id=${product.id}`
+	})
+}
+
+// 生成报价单
+const generatePlan = async () => {
+	// 检查是否有选中的产品
+	const selectedProductsFiltered = productList.value.filter((product, index) => selectedProducts.value[index])
+	
+	if (selectedProductsFiltered.length === 0) {
+		uni.showToast({
+			title: '请选择至少一个产品',
+			icon: 'none'
+		})
+		return
+	}
+
+	try {
+		uni.showLoading({ title: '生成报价单中...', mask: true })
+		
+		// 准备请求数据
+		const requestData = {
+			products: selectedProductsFiltered.map(p => {
+              const { createTime, updateTime, ...rest } = p
+		      const price = typeof p?.price === 'number' ? p.price : parseFloat(p?.price) || 0
+		      const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : parseFloat(p?.num) || 0
+		      const subtotalPrice = computeSubtotal(price, quantity, p?.period, selectedPeriod.value)
+		      return {
+		        ...rest,
+		        subtotalPrice,
+		      };
+            }),
+			totalPrice: calculatedTotal.value
+		}
+
+		console.log('生成报价单请求数据:', requestData)
+
+		// 调用生成报价单接口
+		const response = await api.quotation.createQuotation(requestData)
+		
+		if (response.code === 0 && response.data) {
+			// 使用本地存储传递数据，避免URL参数长度限制
+			uni.setStorageSync('quotationData', response.data)
+			uni.setStorageSync('quotationPeriod', selectedPeriod.value)
+			uni.navigateTo({
+				url: '/subpages/quotation/quotation'
+			})
+		} else {
+			uni.showToast({
+				title: response.msg || '生成报价单失败',
+				icon: 'none'
+			})
+		}
+	} catch (error) {
+		console.error('生成报价单失败:', error)
+		uni.showToast({
+			title: '生成报价单失败，请重试',
+			icon: 'none'
+		})
+	} finally {
+		uni.hideLoading()
+	}
+}
+
+// 生成合同
+const generateContract = async () => {
+	const selectedProductsFiltered = productList.value.filter((p, idx) => selectedProducts.value[idx])
+	if (selectedProductsFiltered.length === 0) {
+		uni.showToast({ title: '请选择至少一个产品', icon: 'none' })
+		return
+	}
+	const requestData = {
+		products: selectedProductsFiltered.map(p => {
+          const { createTime, updateTime, ...rest } = p
+		  const price = typeof p?.price === 'number' ? p.price : parseFloat(p?.price) || 0
+		  const quantity = typeof (p?.num ?? 0) === 'number' ? (p?.num ?? 0) : parseFloat(p?.num) || 0
+		  const subtotalPrice = computeSubtotal(price, quantity, p?.period, selectedPeriod.value)
+		  return {
+		    ...rest,
+		    subtotalPrice,
+		  };
+        }),
+		totalPrice: calculatedTotal.value
+	}
+	// 使用本地存储传递数据，避免URL参数长度限制
+	uni.setStorageSync('contractData', requestData)
+	uni.navigateTo({ url: '/subpages/contract/contract' })
+}
+
+// 生成PPT
+const generateProposal = async () => {
+	const selectedProductsFiltered = productList.value.filter((p, idx) => selectedProducts.value[idx])
+	if (selectedProductsFiltered.length === 0) {
+		uni.showToast({ title: '请选择至少一个产品', icon: 'none' })
+		return
+	}
+	// 使用本地存储传递数据，避免URL参数长度限制
+	uni.setStorageSync('pptProducts', selectedProductsFiltered)
+	uni.navigateTo({ url: '/subpages/ppt/ppt' })
 }
 </script>
 

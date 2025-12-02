@@ -107,150 +107,158 @@
 	</view>
 </template>
 
-<script>
+<script setup>
 import api from '@/utils/api.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { ref, computed, onMounted } from 'vue'
 
-export default {
-	components: { CustomNavbar },
-	data() {
-		return {
-			statusBarHeight: 0,
-			productId: '', // 产品ID
-			productInfo: {
-				typeLabel: [],
-				showPriLabels: [],
-				pubLabels: [],
-			},
-			productImages: [], // 产品图片列表
-			showPicUrls: [] // 轮播图片列表
-		}
-	},
-	computed: {
-		productListMaxHeight() {
-			return `calc(100vh - 44px - ${this.statusBarHeight}px)`
-		},
-    },
-	onLoad(options) {
-		const sys = uni.getSystemInfoSync()
-		this.statusBarHeight = sys.statusBarHeight || 20
-		// 获取传递的产品ID
-		if (options.id) {
-			this.productId = options.id
-			// 获取产品详情
-			this.fetchProductDetail()
+// 响应式数据
+const statusBarHeight = ref(0)
+const productId = ref('') // 产品ID
+const productInfo = ref({
+	typeLabel: [],
+	showPriLabels: [],
+	pubLabels: [],
+})
+const productImages = ref([]) // 产品图片列表
+const showPicUrls = ref([]) // 轮播图片列表
+
+// 计算属性
+const productListMaxHeight = computed(() => {
+	return `calc(100vh - 44px - ${statusBarHeight.value}px)`
+})
+
+// 生命周期钩子
+onMounted(() => {
+	const sys = uni.getSystemInfoSync()
+	statusBarHeight.value = sys.statusBarHeight || 20
+	// 获取传递的产品ID
+	const pages = getCurrentPages()
+	const currentPage = pages[pages.length - 1]
+	const options = currentPage.options || currentPage.$route?.query || {}
+	
+	if (options.id) {
+		productId.value = options.id
+		// 获取产品详情
+		fetchProductDetail()
+	} else {
+		uni.showToast({
+			title: '产品ID不能为空',
+			icon: 'none'
+		})
+	}
+	
+	// 页面加载完成后显示分享按钮
+	// #ifdef MP-WEIXIN
+	// 确保分享菜单显示
+	wx.showShareMenu({
+		withShareTicket: true,
+		menus: ['shareAppMessage', 'shareTimeline']
+	})
+	// #endif
+})
+
+// 配置分享功能 - 分享当前产品
+const onShareAppMessage = (res) => {
+	const shareConfig = {
+		title: productInfo.value.name ? `${productInfo.value.name} - AI智能销售助手推荐` : 'AI智能销售助手 - 产品详情',
+		path: `/subpages/product/detail?id=${productId.value}`,
+		imageUrl: productInfo.value.logo || '/static/defaultPro.png'
+	}
+	return shareConfig
+}
+
+// 配置分享到朋友圈
+const onShareTimeline = () => {
+	const shareConfig = {
+		title: productInfo.value.name ? `${productInfo.value.name} - AI智能销售助手推荐` : 'AI智能销售助手 - 产品详情',
+		query: `id=${productId.value}`,
+		imageUrl: productInfo.value.logo || '/static/defaultPro.png'
+	}
+	return shareConfig
+}
+
+// 方法
+const goBack = () => {
+	uni.navigateBack()
+}
+
+// 获取产品详情
+const fetchProductDetail = async () => {
+	try {
+		uni.showLoading({ title: '加载中...' })
+		const response = await api.product.getProductDetail(productId.value)
+
+		if (response.code === 0 && response.data) {
+			productInfo.value = {
+				...response.data,
+				typeLabel: response.data.typeLabel?.split(',') || [],
+				showPriLabels: response.data.showPriLabels?.split(',') || [],
+				pubLabels: response.data.pubLabels?.split(',') || []
+			}
+			console.log(productInfo.value,'this.productInfo')
+			// 设置导航栏标题（如用自定义导航栏可省略此行）
+			// uni.setNavigationBarTitle({
+			//     title: this.productInfo.name || '产品详情'
+			// })
+			// 获取产品图片
+			fetchProductImages()
 		} else {
 			uni.showToast({
-				title: '产品ID不能为空',
+				title: response.msg || '获取产品详情失败',
 				icon: 'none'
 			})
 		}
-	},
-	
-	// 页面加载完成后显示分享按钮
-	onReady() {
-		// #ifdef MP-WEIXIN
-		// 确保分享菜单显示
-		wx.showShareMenu({
-			withShareTicket: true,
-			menus: ['shareAppMessage', 'shareTimeline']
+	} catch (error) {
+		console.error('获取产品详情失败:', error)
+		uni.showToast({
+			title: '获取产品详情失败',
+			icon: 'none'
 		})
-		// #endif
-	},
-	
-	// 配置分享功能 - 分享当前产品
-	onShareAppMessage(res) {
-		const shareConfig = {
-			title: this.productInfo.name ? `${this.productInfo.name} - AI智能销售助手推荐` : 'AI智能销售助手 - 产品详情',
-			path: `/subpages/product/detail?id=${this.productId}`,
-			imageUrl: this.productInfo.logo || '/static/defaultPro.png'
-		}
-		return shareConfig
-	},
-	
-	// 配置分享到朋友圈
-	onShareTimeline() {
-		const shareConfig = {
-			title: this.productInfo.name ? `${this.productInfo.name} - AI智能销售助手推荐` : 'AI智能销售助手 - 产品详情',
-			query: `id=${this.productId}`,
-			imageUrl: this.productInfo.logo || '/static/defaultPro.png'
-		}
-		return shareConfig
-	},
-	methods: {
-		goBack() {
-			uni.navigateBack()
-		},
-		// 获取产品详情
-		async fetchProductDetail() {
-			try {
-				uni.showLoading({ title: '加载中...' })
-				const response = await api.product.getProductDetail(this.productId)
-
-				if (response.code === 0 && response.data) {
-					this.productInfo = {
-						...response.data,
-						typeLabel: response.data.typeLabel?.split(',') || [],
-						showPriLabels: response.data.showPriLabels?.split(',') || [],
-						pubLabels: response.data.pubLabels?.split(',') || []
-					}
-					console.log(this.productInfo,'this.productInfo')
-					// 设置导航栏标题（如用自定义导航栏可省略此行）
-					// uni.setNavigationBarTitle({
-					//     title: this.productInfo.name || '产品详情'
-					// })
-					// 获取产品图片
-					this.fetchProductImages()
-				} else {
-					uni.showToast({
-						title: response.msg || '获取产品详情失败',
-						icon: 'none'
-					})
-				}
-			} catch (error) {
-				console.error('获取产品详情失败:', error)
-				uni.showToast({
-					title: '获取产品详情失败',
-					icon: 'none'
-				})
-			} finally {
-				uni.hideLoading()
-			}
-		},
-		// 获取产品图片
-		async fetchProductImages() {
-			try {
-				// 如果产品有ID，则获取图片
-				if (this.productId) {
-					const response = await api.product.fetchProductPptImages(this.productId)
-
-					if (response.code === 0 && response.data) {
-						this.productImages = Array.isArray(response.data?.pptPicUrls) ? response.data.pptPicUrls : []
-						this.showPicUrls = Array.isArray(response.data?.showPicUrls) ? response.data.showPicUrls : []
-					}
-				}
-			} catch (error) {
-				console.error('获取产品图片失败:', error)
-			}
-		},
-		// 预览轮播图片
-		previewShowImage(currentUrl, index) {
-			uni.previewImage({
-				urls: this.showPicUrls,
-				current: currentUrl
-			})
-		},
-
-		// 预览产品PPT图片
-		previewImage(currentUrl, index) {
-			const urls = this.productImages.map(img => img.url || img)
-			uni.previewImage({
-				urls: urls,
-				current: currentUrl
-			})
-		}
+	} finally {
+		uni.hideLoading()
 	}
 }
+
+// 获取产品图片
+const fetchProductImages = async () => {
+	try {
+		// 如果产品有ID，则获取图片
+		if (productId.value) {
+			const response = await api.product.fetchProductPptImages(productId.value)
+
+			if (response.code === 0 && response.data) {
+				productImages.value = Array.isArray(response.data?.pptPicUrls) ? response.data.pptPicUrls : []
+				showPicUrls.value = Array.isArray(response.data?.showPicUrls) ? response.data.showPicUrls : []
+			}
+		}
+	} catch (error) {
+		console.error('获取产品图片失败:', error)
+	}
+}
+
+// 预览轮播图片
+const previewShowImage = (currentUrl, index) => {
+	uni.previewImage({
+		urls: showPicUrls.value,
+		current: currentUrl
+	})
+}
+
+// 预览产品PPT图片
+const previewImage = (currentUrl, index) => {
+	const urls = productImages.value.map(img => img.url || img)
+	uni.previewImage({
+		urls: urls,
+		current: currentUrl
+	})
+}
+
+// 使用 Vue3 的 defineExpose 来暴露给外部的方法（uni-app 需要）
+defineExpose({
+	onShareAppMessage,
+	onShareTimeline
+})
 </script>
 
 <style lang="scss" scoped>

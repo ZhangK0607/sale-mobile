@@ -68,169 +68,171 @@
 	</view>
 </template>
 
-<script>
+<script setup>
 import api from '@/utils/api.js'
 import ShareModal from '@/components/ShareModal.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { ref, computed, onMounted } from 'vue'
 
-export default {
-	components: { ShareModal, CustomNavbar },
-       data() {
-	       return {
-			   statusBarHeight: 0,
-		       contract: {},
-		       contentHtml: '',
-		       loading: true,
-		       shareModalVisible: false,
-		       shareModalLink: ''
-	       }
-       },
-	   computed: {
-	   	   productListMaxHeight() {
-	   	   	   return `calc(100vh - 61px - 44px - ${this.statusBarHeight}px)`
-	   	   },
-       },
-	onLoad(options) {
-		const sys = uni.getSystemInfoSync()
-		this.statusBarHeight = sys.statusBarHeight || 20
+// 响应式数据
+const statusBarHeight = ref(0)
+const contract = ref({})
+const contentHtml = ref('')
+const loading = ref(true)
+const shareModalVisible = ref(false)
+const shareModalLink = ref('')
+
+// 计算属性
+const productListMaxHeight = computed(() => {
+	return `calc(100vh - 61px - 44px - ${statusBarHeight.value}px)`
+})
+
+// 生命周期钩子
+onMounted(() => {
+	const sys = uni.getSystemInfoSync()
+	statusBarHeight.value = sys.statusBarHeight || 20
+	try {
+		// 从本地存储获取合同数据
+		const storedData = uni.getStorageSync('contractData')
+		if (!storedData) { 
+			loading.value = false
+			console.log('未找到合同数据')
+			return 
+		}
+		
+		console.log('从本地存储获取的合同数据:', storedData)
+		fetchContract(storedData)
+		
+		// 清除存储的数据
+		uni.removeStorageSync('contractData')
+	} catch (e) { 
+		loading.value = false
+		console.error('获取合同数据失败:', e)
+	}
+})
+
+// 方法
+const goBack = () => { 
+	uni.navigateBack() 
+}
+
+const fetchContract = async (data) => {
+	try {
+		uni.showLoading({ title: '生成合同中...', mask: true })
+		const res = await api.contract.generate(data)
+		if (res.code === 0 && res.data) {
+			contract.value = res.data
+			const html = typeof res.data.content === 'string' ? res.data.content.replace(/\r\n|\n|\r/g, '<br/>') : (res.data.content || '')
+			contentHtml.value = html
+		} else {
+			uni.showToast({ title: res.msg || '生成合同失败', icon: 'none' })
+		}
+	} catch (e) {
+		uni.showToast({ title: '生成合同失败', icon: 'none' })
+	} finally {
+		loading.value = false
+		uni.hideLoading()
+    }
+}
+
+// 下载合同word
+const downloadContractPdf = async () => {
+	try {
+		if (!contract.value?.contractNo || !contract.value?.content) {
+			uni.showToast({ title: '合同数据未就绪', icon: 'none' })
+			return
+		}
+		uni.showLoading({ title: '下载中...', mask: true })
+		const res = await api.contract.downloadContract({ contractNo: contract.value.contractNo, content: contract.value.content })
+		const arrayBuffer = res?.data || res
+		if (!arrayBuffer) throw new Error('未获取到文件数据')
+
+		// #ifdef H5
+		const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+		const url = window.URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = `合同_${contract.value.contractNo || Date.now()}.docx`
+		document.body.appendChild(a)
+		a.click()
+		document.body.removeChild(a)
+		window.URL.revokeObjectURL(url)
+		// #endif
+
+		// #ifdef MP-WEIXIN
 		try {
-			// 从本地存储获取合同数据
-			const storedData = uni.getStorageSync('contractData')
-			if (!storedData) { 
-				this.loading = false
-				console.log('未找到合同数据')
-				return 
-			}
-			
-			console.log('从本地存储获取的合同数据:', storedData)
-			this.fetchContract(storedData)
-			
-			// 清除存储的数据
-			uni.removeStorageSync('contractData')
-		} catch (e) { 
-			this.loading = false
-			console.error('获取合同数据失败:', e)
+			const filePath = `${wx.env.USER_DATA_PATH}/合同_${contract.value.contractNo || Date.now()}.docx`
+			const fs = wx.getFileSystemManager()
+			fs.writeFileSync(filePath, arrayBuffer)
+			uni.openDocument({
+				filePath,
+				fileType: 'docx',
+				showMenu: true,
+				success: () => {},
+				fail: () => {
+					uni.showToast({ title: '打开合同失败', icon: 'none' })
+				}
+			})
+		} catch (err) {
+			uni.showToast({ title: '保存文件失败', icon: 'none' })
 		}
-	},
-	methods: {
-		goBack() { uni.navigateBack() },
-		async fetchContract(data) {
-			try {
-				uni.showLoading({ title: '生成合同中...', mask: true })
-				const res = await api.contract.generate(data)
-				if (res.code === 0 && res.data) {
-					this.contract = res.data
-					const html = typeof res.data.content === 'string' ? res.data.content.replace(/\r\n|\n|\r/g, '<br/>') : (res.data.content || '')
-					this.contentHtml = html
-				} else {
-					uni.showToast({ title: res.msg || '生成合同失败', icon: 'none' })
-				}
-			} catch (e) {
-				uni.showToast({ title: '生成合同失败', icon: 'none' })
-			} finally {
-				this.loading = false
-				uni.hideLoading()
-		    }
-	    },
-		// 下载合同word
-		async downloadContractPdf() {
-			try {
-				if (!this.contract?.contractNo || !this.contract?.content) {
-					uni.showToast({ title: '合同数据未就绪', icon: 'none' })
-					return
-				}
-				uni.showLoading({ title: '下载中...', mask: true })
-				const res = await api.contract.downloadContract({ contractNo: this.contract.contractNo, content: this.contract.content })
-				const arrayBuffer = res?.data || res
-				if (!arrayBuffer) throw new Error('未获取到文件数据')
+		// #endif
 
-				// #ifdef H5
-				const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-				const url = window.URL.createObjectURL(blob)
-				const a = document.createElement('a')
-				a.href = url
-				a.download = `合同_${this.contract.contractNo || Date.now()}.docx`
-				document.body.appendChild(a)
-				a.click()
-				document.body.removeChild(a)
-				window.URL.revokeObjectURL(url)
-				// #endif
-
-				// #ifdef MP-WEIXIN
-				try {
-					const filePath = `${wx.env.USER_DATA_PATH}/合同_${this.contract.contractNo || Date.now()}.docx`
-					const fs = wx.getFileSystemManager()
-					fs.writeFileSync(filePath, arrayBuffer)
-					uni.openDocument({
-						filePath,
-						fileType: 'docx',
-						showMenu: true,
-						success: () => {},
-						fail: () => {
-							uni.showToast({ title: '打开合同失败', icon: 'none' })
-						}
-					})
-				} catch (err) {
-					uni.showToast({ title: '保存文件失败', icon: 'none' })
-				}
-				// #endif
-
-				// #ifdef APP-PLUS
-				const fileName = `合同_${this.contract.contractNo || Date.now()}.docx`
-				plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
-					fs.root.getFile(fileName, { create: true }, (entry) => {
-						entry.createWriter((writer) => {
-							writer.write(arrayBuffer)
-							uni.showToast({ title: '已保存到本地', icon: 'success' })
-						})
-					})
+		// #ifdef APP-PLUS
+		const fileName = `合同_${contract.value.contractNo || Date.now()}.docx`
+		plus.io.requestFileSystem(plus.io.PRIVATE_DOC, (fs) => {
+			fs.root.getFile(fileName, { create: true }, (entry) => {
+				entry.createWriter((writer) => {
+					writer.write(arrayBuffer)
+					uni.showToast({ title: '已保存到本地', icon: 'success' })
 				})
-				// #endif
-			} catch (e) {
-				uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
-			} finally {
-				uni.hideLoading()
-			}
-		},
-		// 分享合同（返回链接或直接返回文件流）
-		async shareContract() {
-			try {
-				if (!this.contract?.contractNo || !this.contract?.content) {
-				    uni.showToast({ title: '合同数据未就绪', icon: 'none' })
-				    return
-				}
-				uni.showLoading({ title: '生成分享链接...', mask: true })
-				const res = await api.contract.buildDownloadContract({ contractNo: this.contract.contractNo, content: this.contract.content, isShare: true })
-				const data = res?.data
-				let link = ''
-				if (typeof data === 'string') {
-				   link = data
-				   if (uni.setClipboardData) {
-					   uni.setClipboardData({ data: link, success: () => {} })
-				   }
-				} else {
-				   // 否则尝试按文件流处理
-				   const arrayBuffer = data || res
-				   if (arrayBuffer && (typeof window !== 'undefined')) {
-					   const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-					   link = window.URL.createObjectURL(blob)
-					   if (uni.setClipboardData) {
-						   uni.setClipboardData({ data: link, success: () => {} })
-					   }
-				   }
-				}
-				if (link) {
-				   this.shareModalLink = link
-				   this.shareModalVisible = true
-				   return
-				}
-				uni.showToast({ title: '未获取到分享内容', icon: 'none' })
-			} catch (e) {
-				uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
-			} finally {
-				uni.hideLoading()
-			}
+			})
+		})
+		// #endif
+	} catch (e) {
+		uni.showToast({ title: (e && e.message) || '下载失败，请稍后重试', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
+
+// 分享合同（返回链接或直接返回文件流）
+const shareContract = async () => {
+	try {
+		if (!contract.value?.contractNo || !contract.value?.content) {
+		    uni.showToast({ title: '合同数据未就绪', icon: 'none' })
+		    return
 		}
+		uni.showLoading({ title: '生成分享链接...', mask: true })
+		const res = await api.contract.buildDownloadContract({ contractNo: contract.value.contractNo, content: contract.value.content, isShare: true })
+		const data = res?.data
+		let link = ''
+		if (typeof data === 'string') {
+		   link = data
+		   if (uni.setClipboardData) {
+			   uni.setClipboardData({ data: link, success: () => {} })
+		   }
+		} else {
+		   // 否则尝试按文件流处理
+		   const arrayBuffer = data || res
+		   if (arrayBuffer && (typeof window !== 'undefined')) {
+			   const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+			   link = window.URL.createObjectURL(blob)
+			   if (uni.setClipboardData) {
+				   uni.setClipboardData({ data: link, success: () => {} })
+			   }
+		   }
+		}
+		if (link) {
+		   shareModalLink.value = link
+		   shareModalVisible.value = true
+		   return
+		}
+		uni.showToast({ title: '未获取到分享内容', icon: 'none' })
+	} catch (e) {
+		uni.showToast({ title: (e && e.message) || '分享失败，请稍后重试', icon: 'none' })
+	} finally {
+		uni.hideLoading()
 	}
 }
 </script>
