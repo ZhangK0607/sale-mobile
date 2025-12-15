@@ -117,7 +117,7 @@
 <script setup>
 import { ref, reactive, nextTick, onMounted } from 'vue'
 import api from '@/utils/api.js'
-import { encrypt, decrypt } from '@/utils/encrypt.js'
+import { encrypt2Base64, decryptFromBase64 } from '@/utils/sm4Crypto';
 
 // 响应式数据
 const isIOS = ref(false)
@@ -246,7 +246,7 @@ const loadRememberedInfo = () => {
       formData.username = savedUsername
       formData.tenantName = savedTenantName
       if (savedPassword) {
-        formData.password = decrypt(savedPassword) // 解密密码
+        formData.password = decryptFromBase64(savedPassword) // 解密密码
       }
       rememberMe.value = true
       checkboxValue.value = ['remember']
@@ -263,7 +263,7 @@ const saveLoginInfo = () => {
     uni.setStorageSync('savedUsername', formData.username)
     uni.setStorageSync('savedTenantName', formData.tenantName)
     // 加密保存密码
-    const encryptedPassword = encrypt(formData.password)
+    const encryptedPassword = encrypt2Base64(formData.password)
     uni.setStorageSync('savedPassword', encryptedPassword)
   } else {
     uni.removeStorageSync('rememberMe')
@@ -318,7 +318,7 @@ const handleLogin = async () => {
     // 3. 调用登录接口
     const loginData = {
       username: formData.username,
-      password: formData.password,
+      password: encrypt2Base64(formData.password),
       tenantId: tenantId,
       tenantName: formData.tenantName,
       rememberMe: rememberMe.value
