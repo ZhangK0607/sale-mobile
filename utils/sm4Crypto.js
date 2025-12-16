@@ -10,8 +10,16 @@ export class Sm4Crypto {
     this.config = config
 
     if (config.mode === 'cbc' && config.iv) {
-      this.ivBytes = new TextEncoder().encode(config.iv)
+      this.ivBytes = this.stringToBytes(config.iv)
     }
+  }
+
+  stringToBytes(str) {
+    const bytes = []
+    for (let i = 0; i < str.length; i++) {
+      bytes.push(str.charCodeAt(i))
+    }
+    return new Uint8Array(bytes)
   }
 
   validateConfig(config) {
@@ -27,7 +35,7 @@ export class Sm4Crypto {
   encrypt(plainText) {
     if (typeof plainText !== 'string') throw new Error('SM4加密输入必须为字符串')
     try {
-      const keyBytes = new TextEncoder().encode(this.config.key)
+      const keyBytes = this.stringToBytes(this.config.key)
       const options = this.config.mode === 'cbc' ? { mode: 'cbc', iv: this.ivBytes } : { mode: 'ecb' }
 
       return sm4.encrypt(plainText, keyBytes, options)
@@ -40,7 +48,7 @@ export class Sm4Crypto {
   decrypt(cipherText) {
     if (typeof cipherText !== 'string') throw new Error('SM4解密输入必须为字符串')
     try {
-      const keyBytes = new TextEncoder().encode(this.config.key)
+      const keyBytes = this.stringToBytes(this.config.key)
       const options = this.config.mode === 'cbc' ? { mode: 'cbc', iv: this.ivBytes } : { mode: 'ecb' }
 
       return sm4.decrypt(cipherText, keyBytes, options)
