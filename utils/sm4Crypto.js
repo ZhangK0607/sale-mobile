@@ -1,4 +1,5 @@
 import { sm4 } from 'sm-crypto'
+import { Base64 } from 'js-base64'
 
 import cryptoConfig from './crypto'
 const { key, iv } = cryptoConfig
@@ -53,15 +54,11 @@ export class Sm4Crypto {
     const bytes = new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)))
     let binary = ''
     bytes.forEach((b) => (binary += String.fromCharCode(b)))
-    return btoa(binary)
+    return Base64.fromUint8Array(bytes)
   }
   
   base64ToHex(base64) {
-    const binary = atob(base64)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i)
-    }
+    const bytes = Base64.toUint8Array(base64)
     return Array.from(bytes)
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
